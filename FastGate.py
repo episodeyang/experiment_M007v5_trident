@@ -12,6 +12,7 @@ from numpy import *
 from slab import *
 from slab.instruments import InstrumentManager
 from slab import dsfit
+import matplotlib as mpl
 
 from liveplot import LivePlotClient
 
@@ -109,8 +110,18 @@ class eHeExperiment():
         self.logfile = os.path.join(self.datapath, 'log.txt')
 
     def nwa_sweep(self, fpts=None, windowName="NWA", config=None):
+        def amp(pair):
+            return sqrt(pair[0] ** 2 + pair[1] ** 2)
+
+        def phase(pair):
+            return arctan(pair[0] / pair[1])
+
         if fpts == None:
-            fpts = linspace(self.nwa.config.range[0], self.nwa.config.range[1], self.nwa.config.range[2])
+            self.nwa.config.fpts = linspace(self.nwa.config.range[0], self.nwa.config.range[1],
+                                            self.nwa.config.range[2])
+        else:
+            self.nwa.config.fpts = fpts;
+
         if self.alazar.config != config and config != None:
             print "new configuration file"
             self.alazar.config = AlazarConfig(config);
@@ -118,15 +129,21 @@ class eHeExperiment():
             self.alazar.configure()
 
         mag = [];
+        ch1s = [];
         tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data()
-        for f in fpts:
-            self.lb.set_frequency(f)
-            tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data()  #excise=(0,4992))
+        for f in self.nwa.config.fpts:
+            self.lb.set_frequency(float(f))
+            tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data(excise=(0, -20))  #excise=(0,4992))
+
+            #data.addLine('homo_ch1',ch1_pts)
 
             ch1_avg = mean(ch1_pts)
             ch2_avg = mean(ch2_pts)
-            mag.append(ch2_avg)
-            self.plotter.append_z(windowName, ch1_pts)
+            amps = map(amp, zip(ch1_pts, ch2_pts))
+            phases = map(phase, zip(ch1_pts, ch2_pts))
+            mag.append(mean(amps))
+            self.plotter.append_z('nwa mag', amps)
+            self.plotter.append_z('nwa phase', phases)
         return mag
 
     def gate_sweep(self, config):
@@ -136,6 +153,23 @@ class eHeExperiment():
         card.configure()
         print "Sweep gate voltage"
         tpts, ch1_pts, ch2_pts = card.acquire_avg_data(excise=(0, 9000))
+
+    def rinse_n_fire(self):
+        self.note("unbias the trap for a second")
+        self.res.set_volt(-3)
+        self.srs.set_output(1, True)
+        self.note("make sure the probe is off before the baseline")
+        time.sleep(1)
+
+        self.note('firing the filament')
+        self.res.set_volt(1.5)
+        self.fil.fire_filament(400, 0.01)
+
+        self.note("Now wait for cooldown while taking traces")
+        while self.fridge.get_mc_temperature() > 60e-3 or (time.time() - self.t0) < 360:
+            print '.',
+        self.note("fridge's cold, start sweeping...")
+        self.note("sweep probe frequency and trap electrode")
 
 
 if __name__ == "__main__":
@@ -155,19 +189,35 @@ if __name__ == "__main__":
     labbrickParams = {}
 
     alazarConfig = {'clock_edge': 'rising', 'trigger_delay': 0,
-                    'ch1_filter': False, 'ch1_enabled': True, 'samplesPerRecord': 576,
+                    'ch1_filter': False, 'ch1_enabled': True, 'samplesPerRecord': 50112,
                     'bufferCount': 10, 'trigger_edge1': 'rising', 'trigger_edge2': 'rising',
                     'ch2_range': 1, 'clock_source': 'reference', 'trigger_level2': 1.0, 'trigger_level1': 1.0,
                     'ch2_coupling': 'DC', 'trigger_coupling': 'DC', 'ch2_filter': False, 'trigger_operation': 'or',
                     'ch1_coupling': 'DC', 'trigger_source2': 'disabled', 'trigger_source1': 'external',
-                    'recordsPerBuffer': 1, 'sample_rate': 4, 'timeout': 1000, 'ch1_range': 4,
+                    'recordsPerBuffer': 1, 'sample_rate': 400, 'timeout': 1000, 'ch1_range': 1,
                     'ch2_enabled': True, 'recordsPerAcquisition': 1}
 
     ehe = eHeExperiment(expt_path, prefix, alazarConfig, fridgeParams, filamentParams)
+
+    ehe.res = lambda: 0
+
+    def set_volt_res(volt):
+        ehe.srs.set_volt(volt, channel=1)
+
+    def get_volt_res():
+        return ehe.srs.get_volt(channel=1)
+
+    ehe.res.set_volt = set_volt_res
+    ehe.res.get_volt = get_volt_res
+
     ehe.note('start experiment. ')
 
-    fpts = linspace(8.0125e9 - 10e6, 8.0125e9 + 10e6, 51)
-    ehe.plotter.remove('NWA')
-    mag = ehe.nwa.sweep(fpts)
-    fits = dsfit.fitlor(fpts, mag)
-    print
+    ehe.rinse_n_fire();
+    ehe.res.set_volt(1.0);
+    ehe.sample = lambda: None;
+    ehe.sample.freqNoE = 8012438335.47;
+    ehe.nwa.config.range = (ehe.sample.freqNoE - 30e6, ehe.sample.freqNoE + 2e6, 50)
+    ehe.plotter.remove()
+    mag = ehe.nwa.sweep()
+    offset, amplitude, center, hwhm = dsfit.fitlor(ehe.nwa.config.fpts, mag)
+    print center
