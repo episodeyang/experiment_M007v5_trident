@@ -133,7 +133,7 @@ class eHeExperiment():
         tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data()
         for f in self.nwa.config.fpts:
             self.lb.set_frequency(float(f))
-            tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data(excise=(0, -20))  #excise=(0,4992))
+            tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data(excise=(0, -40))  #excise=(0,4992))
 
             #data.addLine('homo_ch1',ch1_pts)
 
@@ -152,7 +152,7 @@ class eHeExperiment():
         card = Alazar(scope_settings)
         card.configure()
         print "Sweep gate voltage"
-        tpts, ch1_pts, ch2_pts = card.acquire_avg_data(excise=(0, 9000))
+        tpts, ch1_pts, ch2_pts = card.acquire_avg_data(excise=(0, 4950))
 
     def rinse_n_fire(self):
         self.note("unbias the trap for a second")
@@ -189,12 +189,12 @@ if __name__ == "__main__":
     labbrickParams = {}
 
     alazarConfig = {'clock_edge': 'rising', 'trigger_delay': 0,
-                    'ch1_filter': False, 'ch1_enabled': True, 'samplesPerRecord': 50112,
+                    'ch1_filter': False, 'ch1_enabled': True, 'samplesPerRecord': 5112,
                     'bufferCount': 10, 'trigger_edge1': 'rising', 'trigger_edge2': 'rising',
                     'ch2_range': 1, 'clock_source': 'reference', 'trigger_level2': 1.0, 'trigger_level1': 1.0,
                     'ch2_coupling': 'DC', 'trigger_coupling': 'DC', 'ch2_filter': False, 'trigger_operation': 'or',
                     'ch1_coupling': 'DC', 'trigger_source2': 'disabled', 'trigger_source1': 'external',
-                    'recordsPerBuffer': 1, 'sample_rate': 400, 'timeout': 1000, 'ch1_range': 1,
+                    'recordsPerBuffer': 1, 'sample_rate': 40, 'timeout': 1000, 'ch1_range': 1,
                     'ch2_enabled': True, 'recordsPerAcquisition': 1}
 
     ehe = eHeExperiment(expt_path, prefix, alazarConfig, fridgeParams, filamentParams)
@@ -212,11 +212,12 @@ if __name__ == "__main__":
 
     ehe.note('start experiment. ')
 
-    ehe.rinse_n_fire();
-    ehe.res.set_volt(1.0);
+    #ehe.rinse_n_fire();
+    #ehe.res.set_volt(0.85);
     ehe.sample = lambda: None;
     ehe.sample.freqNoE = 8012438335.47;
-    ehe.nwa.config.range = (ehe.sample.freqNoE - 30e6, ehe.sample.freqNoE + 2e6, 50)
+    ehe.sample.freqWithE = 7998438335.47
+    ehe.nwa.config.range = (ehe.sample.freqWithE - 7.5e6, ehe.sample.freqWithE + 12.5e6, 100)
     ehe.plotter.remove()
     mag = ehe.nwa.sweep()
     offset, amplitude, center, hwhm = dsfit.fitlor(ehe.nwa.config.fpts, mag)
