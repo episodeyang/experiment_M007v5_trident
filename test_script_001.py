@@ -23,17 +23,9 @@ import pstats
 import util as util
 from ehe_experiment import eHeExperiment
 
-def tic():
-    global tic_time
-    tic_time = time.time()
-
-def toc():
-    global tic_time
-    return time.time() - tic_time
-
 if __name__ == "__main__":
-    expt_path = r'S:\_Data\131021 - EonHe M007v5 Trident\014_testAlazarSweep'
-    prefix = 'test'
+    expt_path = r'S:\_Data\140312 - EonHe M007v5 Trident\data'
+    prefix = 'explore'
     fridgeParams = {
         'wait_for_temp': 0.040,
         'min_temp_wait_time': 60  #11 minutes
@@ -58,8 +50,9 @@ if __name__ == "__main__":
 
     ehe = eHeExperiment(expt_path, prefix, alazarConfig, fridgeParams, filamentParams)
     print ehe.filename
-    
+
     ehe.note('start experiment. ')
+
     def na_monit():
         ehe.na.take_one("monit")
 
@@ -73,18 +66,18 @@ if __name__ == "__main__":
     ehe.plotter.clear('nwa phase')
     ehe.plotter.clear('nwa I')
     ehe.plotter.clear('nwa Q')
-    
-    
+
+
     #this sets the peakF for the sample object
     #ehe.plotter.remove()
     ehe.set_DC_mode()
-#    ehe.rinse_n_fire(threshold=150e-3, intCallback=na_monit);
+    #    ehe.rinse_n_fire(threshold=150e-3, intCallback=na_monit);
     #ehe.res.set_volt(1.5);
     ehe.get_peak()
     ehe.set_volt_sweep(1.85, 1.0, 0.005, 0.8, 0.8, 0.05, doublePass=True)
     ehe.get_na_sweep_voltage(ehe.sample.peakF, 2e6)
     ehe.set_ramp_mode(high=1.85, low=1.0)
-    ehe.nwa.config.range = [ehe.sample.peakF-1e6, ehe.sample.peakF+1e6, 120]
+    ehe.nwa.config.range = [ehe.sample.peakF - 1e6, ehe.sample.peakF + 1e6, 120]
     ehe.nwa.sweep()
 
     # mag = ehe.nwa.sweep()

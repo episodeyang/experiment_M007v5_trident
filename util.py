@@ -6,11 +6,9 @@ def tic():
     global tic_time
     tic_time = time.time()
 
-
 def toc():
     global tic_time
     return time.time() - tic_time
-
 
 def ramp(start, finish, step):
     if start < finish:

@@ -22,17 +22,7 @@ import pstats
 
 import matplotlib as mlp
 import util as util
-
-
-def tic():
-    global tic_time
-    tic_time = time.time()
-
-
-def toc():
-    global tic_time
-    return time.time() - tic_time
-
+from data_cache import dataCacheProxy
 
 class eHeExperiment():
     def attachInstruments(self):
@@ -51,10 +41,14 @@ class eHeExperiment():
         self.trigger = self.im['BNC_sync']
         self.alazar = Alazar()
 
-    def __init__(self, expt_path, prefix, alazar_config, fridgeParams, filamentParams):
+    def __init__(self, expt_path, prefix, alazar_config, fridgeParams, filamentParams, newDataFile=False):
         self.expt_path = expt_path
         self.prefix = prefix
-        self.filename = get_next_filename(expt_path, prefix, suffix='.h5')
+        if newDataFile == True:
+            self.filename = get_next_filename(self.expt_path, self.prefix, suffix='.h5')
+        else:
+            self.filename = get_current_filename(self.expt_path, self.prefix, suffix='.h5')
+        self.note_maxLength = 79;
 
         self.plotter = LivePlotClient()
         self.attachInstruments();
@@ -95,9 +89,7 @@ class eHeExperiment():
         self.na.take_one = self.na_take_one;
 
         #this is the dataCache attached to the experiment.
-        self.dataCache = lambda x: x;
-
-        # self.DirectorySetup(folder,prefix+r"-puff_"+str(self.im['heman'].get_puffs()))
+        self.dataCache = dataCacheProxy(self)
 
         self.count = -1
         self.t0 = time.time()
@@ -106,11 +98,8 @@ class eHeExperiment():
         return SlabFile(self.filename)
 
     def note(self, string):
-        max_length = 79;
         print string;
-        with h5File(self.filename) as hf:  #default is "a"
-            for line in textwrap2.wrap(string, max_length):
-                hf.append('notes', line + ' ' * (max_length - len(line)))
+        self.dataCache.note(string, maxLength=self.note_maxLength)
 
     def configNWA(self, params=None):
         if params != None:
@@ -152,16 +141,7 @@ class eHeExperiment():
         self.trap.set_burst_state('on')
         self.trap.set_trigger_source('ext')
 
-    def DirectorySetup(self, exp_path, prefix):
-        self.expt_path = exp_path
-        self.prefix = prefix
-        ### Saving the script
-        print "Saved script as: %s" % save_script(self.expt_path, self.prefix)
-        #        print get_script()
-        self.datapath = make_datapath(self.expt_path, self.prefix)
-        self.logfile = os.path.join(self.datapath, 'log.txt')
-
-    def nwa_sweep(self, fpts=None, windowName="NWA", config=None):
+    def nwa_sweep(self, fpts=None, config=None):
         def amp(pair):
             return sqrt(pair[0] ** 2 + pair[1] ** 2)
 
@@ -217,7 +197,7 @@ class eHeExperiment():
 
     def na_take_one(self, plotName='na spectrum'):
         """Setup Network Analyzer to take a single averaged trace and grab data,
-        either saving it to fname or returning it"""
+        returning fpts, mags, phases"""
         self.na.clear_averages()
         self.na.trigger_single()
         self.na.averaging_complete()
