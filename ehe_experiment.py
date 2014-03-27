@@ -20,7 +20,6 @@ from slab.instruments import Alazar, AlazarConfig
 import cProfile
 import pstats
 
-import matplotlib as mlp
 import util as util
 from data_cache import dataCacheProxy
 
@@ -93,9 +92,6 @@ class eHeExperiment():
 
         self.count = -1
         self.t0 = time.time()
-
-    def get_hf(self):
-        return SlabFile(self.filename)
 
     def note(self, string):
         print string;
