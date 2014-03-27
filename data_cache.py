@@ -15,14 +15,17 @@ import matplotlib.pyplot as plt
 
 from os import path
 import textwrap2
+import re
 import util as util
 
 class dataCacheProxy():
-    def __init__(self, expInst, newFile=False):
+    def __init__(self, expInst, newFile=False, stack_prefix='stack_'):
         self.exp = expInst
         self.data_directory = expInst.expt_path
         self.prefix = expInst.prefix
         self.set_data_file_path(newFile)
+        self.current_stack = ''
+        self.stack_prefix = stack_prefix
 
     def set_data_file_path(self, newFile=False):
         try:
@@ -75,7 +78,16 @@ class dataCacheProxy():
         with SlabFile(self.path) as f:
             return get_data(f, keyList)
 
-    def note(self, string, keyString='notes', printOption=False, maxLength=79):
+    def new_stack(self):
+        try: index = int(self.current_stack[-5:]) + 1
+        except: index = 0
+        self.current_stack = self.stack_prefix + str(100000 + index)[1:]
+
+    def note(self, string, keyString=None, printOption=False, maxLength=79):
+        if keyString == None:
+            keyString = 'notes'
+            if hasattr(self, 'current_stack'):
+                keyString = self.current_stack + '.' + keyString
         if not printOption:
             print string
         with SlabFile(self.path) as f:

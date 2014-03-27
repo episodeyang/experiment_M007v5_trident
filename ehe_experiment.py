@@ -210,6 +210,7 @@ class eHeExperiment():
         if span != None:
             self.na.set_span(span)
         trapStart, trapEnd, trapStep, resStart, resEnd, resStep, doublePass = self.config.volt_sweep_range
+        self.dataCache.new_stack()
         self.dataCache.note(
             'trapStart: {} , trapEnd: {} , trapStep: {} , resStart: {} , resEnd: {} , resStep: {} , doublePass: {} '.format(
                 trapStart, trapEnd, trapStep, resStart, resEnd, resStep, doublePass))
@@ -217,7 +218,7 @@ class eHeExperiment():
             self.trap.set_volt(trapV)
             self.res.set_volt(resV)
             fpts, mag, phase = self.na.take_one(plotName=plotName)
-            # self.dataCache.set('')
+            self.dataCache.set('')
         offset, amplitude, center, hwhm = dsfit.fitlor(fpts, dBmtoW(mag))
         print "center frequency is: ", center
         return center
