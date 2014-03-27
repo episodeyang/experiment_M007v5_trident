@@ -24,7 +24,7 @@ import util as util
 from data_cache import dataCacheProxy
 
 class eHeExperiment():
-    def attachInstruments(self):
+    def attach_instruments(self):
         self.im = InstrumentManager()
         self.na = self.im['NWA']
         self.heman = self.im['heman']
@@ -48,9 +48,10 @@ class eHeExperiment():
         else:
             self.filename = get_current_filename(self.expt_path, self.prefix, suffix='.h5')
         self.note_maxLength = 79;
+        self.config = lambda: None;
 
         self.plotter = LivePlotClient()
-        self.attachInstruments();
+        self.attach_instruments();
         self.fil.params = filamentParams
         self.fil.update = self.updateFilament
         self.fil.update(self.fil.params)
@@ -208,15 +209,21 @@ class eHeExperiment():
             self.na.set_center_frequency(center)
         if span != None:
             self.na.set_span(span)
+        trapStart, trapEnd, trapStep, resStart, resEnd, resStep, doublePass = self.config.volt_sweep_range
+        self.dataCache.note(
+            'trapStart: {} , trapEnd: {} , trapStep: {} , resStart: {} , resEnd: {} , resStep: {} , doublePass: {} '.format(
+                trapStart, trapEnd, trapStep, resStart, resEnd, resStep, doublePass))
         for trapV, resV in zip(self.trapVs, self.resVs):
             self.trap.set_volt(trapV)
             self.res.set_volt(resV)
             fpts, mag, phase = self.na.take_one(plotName=plotName)
+            # self.dataCache.set('')
         offset, amplitude, center, hwhm = dsfit.fitlor(fpts, dBmtoW(mag))
         print "center frequency is: ", center
         return center
 
     def set_volt_sweep(self, trapStart, trapEnd, trapStep, resStart, resEnd, resStep, doublePass=False, showPlot=False):
+        self.config.volt_sweep_range = [trapStart, trapEnd, trapStep, resStart, resEnd, resStep, doublePass]
         if doublePass:
             self.pts = (((trapStart, trapEnd, trapStart), trapStep), )
         else:
