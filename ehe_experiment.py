@@ -118,6 +118,7 @@ class eHeExperiment():
                               params['fil_freq'], params['fil_duration'])
 
     def set_DC_mode(self):
+        self.na.set_output('on')
         self.lb.set_output(False)
         self.trap.setup_volt_source(None, 3, 0, 'off')
 
@@ -137,6 +138,7 @@ class eHeExperiment():
         self.trap.set_function('ramp')
         self.trap.set_burst_state('on')
         self.trap.set_trigger_source('ext')
+        self.na.set_output('off')
 
     def nwa_sweep(self, fpts=None, config=None):
         def amp(pair):
@@ -161,8 +163,16 @@ class eHeExperiment():
             print "config file has to pass through the AlazarConfig middleware."
             self.alazar.configure()
 
-        mag = [];
-        ch1s = [];
+        self.dataCache.new_stack()
+        self.dataCache.note('alazar_nwa_sweep', keyString='type')
+        self.dataCache.note(self.dataCache.get_date_time_string(), keyString='startTime')
+        self.dataCache.set('fpts', self.nwa.config.fpts)
+        start, end, n = self.nwa.config.range
+        self.dataCache.note(
+            'start freq: {}, end freq: {}, number of points: {}'.format(start, end, n),
+            keyString='type'
+            );
+
         tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data()
         for f in self.nwa.config.fpts:
             self.lb.set_frequency(float(f))
@@ -170,19 +180,19 @@ class eHeExperiment():
 
             ch1_avg = mean(ch1_pts)
             ch2_avg = mean(ch2_pts)
-            amps = map(amp, zip(ch1_pts, ch2_pts))
+            mags = map(amp, zip(ch1_pts, ch2_pts))
             phases = map(phase, zip(ch1_pts, ch2_pts))
-            mag.append(mean(amps))
-            self.plotter.append_z('nwa mag', amps)
+
+            self.plotter.append_z('nwa mag', mags)
             self.plotter.append_z('nwa phase', phases)
             self.plotter.append_z('nwa I', ch1_pts)
             self.plotter.append_z('nwa Q', ch2_pts)
-            with SlabFile(self.filename) as f:
-                f.append_line('nwa mag', amps)
-                f.append_line('nwa phase', phases)
-                f.append_line('nwa I', ch1_pts)
-                f.append_line('nwa Q', ch2_pts)
-        return mag
+
+            self.dataCache.post('mags', mags)
+            self.dataCache.post('phases', phases)
+            self.dataCache.post('I', ch1_pts)
+            self.dataCache.post('Q', ch2_pts)
+        return mags
 
     def gate_sweep(self, config):
         print "Configuring card"
@@ -209,16 +219,23 @@ class eHeExperiment():
             self.na.set_center_frequency(center)
         if span != None:
             self.na.set_span(span)
-        trapStart, trapEnd, trapStep, resStart, resEnd, resStep, doublePass = self.config.volt_sweep_range
+
         self.dataCache.new_stack()
+        self.dataCache.note('na_take_one', keyString='type')
+        self.dataCache.note(self.dataCache.get_date_time_string(), keyString='startTime')
+
+        trapStart, trapEnd, trapStep, resStart, resEnd, resStep, doublePass = self.config.volt_sweep_range
         self.dataCache.note(
             'trapStart: {} , trapEnd: {} , trapStep: {} , resStart: {} , resEnd: {} , resStep: {} , doublePass: {} '.format(
                 trapStart, trapEnd, trapStep, resStart, resEnd, resStep, doublePass))
+
         for trapV, resV in zip(self.trapVs, self.resVs):
             self.trap.set_volt(trapV)
             self.res.set_volt(resV)
             fpts, mag, phase = self.na.take_one(plotName=plotName)
-            self.dataCache.set('')
+            self.dataCache.set('fpts', fpts)
+            self.dataCache.post('magss', fpts)
+            self.dataCache.post('phases', fpts)
         offset, amplitude, center, hwhm = dsfit.fitlor(fpts, dBmtoW(mag))
         print "center frequency is: ", center
         return center
@@ -261,19 +278,15 @@ class eHeExperiment():
         self.note("fridge's cold, start sweeping...")
         self.note("sweep probe frequency and trap electrode")
 
-    def get_peak(self, set_nwa=True, nwa_span=20e6):
+    def get_peak(self, set_nwa=True, nwa_span=30e6):
         if set_nwa :
             self.na.set_sweep_points(320)
             self.na.set_center_frequency(self.sample.freqNoE)
             self.na.set_span(nwa_span)
-        fpts, mag, phase = self.na.take_one()
-        self.sample.peakF = fpts[argmax(mag)]
+        fpts, mags, phases = self.na.take_one()
+        self.sample.peakF = fpts[argmax(mags)]
         print "the peak is found at: ", self.sample.peakF
-        return fpts, mag, phase
-
-    def na_get_trap_sweep(self):
-        self.trap.setup_volt_source(None, 3, 0, 'off')
-        self.set_sweep(1.25, 0.25, 0.1, 0.8, 0.8, 0.05, doublePass=True)
+        return fpts, mags, phases
 
 
 if __name__ == "__main__":

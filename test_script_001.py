@@ -25,7 +25,7 @@ from ehe_experiment import eHeExperiment
 
 if __name__ == "__main__":
     expt_path = r'S:\_Data\140312 - EonHe M007v5 Trident\data'
-    prefix = 'explore'
+    prefix = 'experimental'
     fridgeParams = {
         'wait_for_temp': 0.040,
         'min_temp_wait_time': 60  #11 minutes
@@ -68,11 +68,9 @@ if __name__ == "__main__":
     ehe.plotter.clear('nwa Q')
 
 
-    #this sets the peakF for the sample object
-    #ehe.plotter.remove()
     ehe.set_DC_mode()
-    #    ehe.rinse_n_fire(threshold=150e-3, intCallback=na_monit);
-    #ehe.res.set_volt(1.5);
+    ehe.rinse_n_fire(threshold=80e-3, intCallback=na_monit);
+
     ehe.get_peak()
     ehe.set_volt_sweep(1.85, 1.0, 0.005, 0.8, 0.8, 0.05, doublePass=True)
     ehe.get_na_sweep_voltage(ehe.sample.peakF, 2e6)
