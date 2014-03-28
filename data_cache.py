@@ -17,7 +17,6 @@ from os import path
 import textwrap2
 import re
 import util as util
-from datetime import datetime
 
 class dataCacheProxy():
     def __init__(self, expInst, newFile=False, stack_prefix='stack_', filepath=None):
@@ -34,10 +33,6 @@ class dataCacheProxy():
             # self.currentStack.post = self.post
         else:
             self.path = filepath
-
-    def get_date_time_string(self):
-        now = datetime.now()
-        return "{}/{}/{} {}:{}:{}".format(now.year, now.month, now.day, now.hour, now.minute, now.second)
 
     def set_data_file_path(self, newFile=False):
         try:

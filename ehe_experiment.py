@@ -165,7 +165,7 @@ class eHeExperiment():
 
         self.dataCache.new_stack()
         self.dataCache.note('alazar_nwa_sweep', keyString='type')
-        self.dataCache.note(self.dataCache.get_date_time_string(), keyString='startTime')
+        self.dataCache.note(util.get_date_time_string(), keyString='startTime')
         self.dataCache.set('fpts', self.nwa.config.fpts)
         start, end, n = self.nwa.config.range
         self.dataCache.note(
@@ -222,7 +222,7 @@ class eHeExperiment():
 
         self.dataCache.new_stack()
         self.dataCache.note('na_take_one', keyString='type')
-        self.dataCache.note(self.dataCache.get_date_time_string(), keyString='startTime')
+        self.dataCache.note(util.get_date_time_string(), keyString='startTime')
 
         trapStart, trapEnd, trapStep, resStart, resEnd, resStep, doublePass = self.config.volt_sweep_range
         self.dataCache.note(

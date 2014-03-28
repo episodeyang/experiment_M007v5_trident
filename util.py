@@ -1,6 +1,7 @@
 __author__ = 'Ge Yang'
 from numpy import *
 from time import time, sleep
+from datetime import datetime
 
 def tic():
     global tic_time
@@ -9,6 +10,11 @@ def tic():
 def toc():
     global tic_time
     return time.time() - tic_time
+
+def get_date_time_string(self):
+    now = datetime.now()
+    return "{}/{}/{} {}:{}:{}".format(now.year, now.month, now.day, now.hour, now.minute, now.second)
+
 
 def ramp(start, finish, step):
     if start < finish:
