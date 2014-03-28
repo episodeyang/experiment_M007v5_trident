@@ -2,7 +2,7 @@
 """
 Created on Mon Feb 06 22:13:59 2012
 
-@author: Phil
+@author: Ge
 """
 
 
@@ -19,8 +19,8 @@ import re
 import util as util
 
 class dataCacheProxy():
-    def __init__(self, expInst, newFile=False, stack_prefix='stack_', filepath=None):
-        if filepath == None:
+    def __init__(self, expInst=None, newFile=False, stack_prefix='stack_', filepath=None):
+        if filepath == None and expInst != None:
             self.exp = expInst
             self.data_directory = expInst.expt_path
             self.prefix = expInst.prefix
