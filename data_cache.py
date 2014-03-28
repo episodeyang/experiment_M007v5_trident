@@ -8,7 +8,7 @@ Created on Mon Feb 06 22:13:59 2012
 
 import numpy as np
 from slab import SlabFile
-from slab.dataanalysis import get_current_filename
+from slab.dataanalysis import get_current_filename, get_next_filename
 import matplotlib.pyplot as plt
 
 # from liveplot import LivePlotClient
@@ -108,6 +108,7 @@ class dataCacheProxy():
         with SlabFile(self.path) as f:
             try:
                 f.create_group(self.current_stack)
+                print "new stack: ", self.current_stack;
             except ValueError, error:
                 print "{} already exists. Move to next index.".format(self.current_stack)
                 self.new_stack()
@@ -115,13 +116,10 @@ class dataCacheProxy():
     def note(self, string, keyString=None, printOption=False, maxLength=79):
         if keyString == None:
             keyString = 'notes'
-        if (self.current_stack) >= 1:
-            keyString = self.current_stack + '.' + keyString
         if printOption:
             print string
-        with SlabFile(self.path) as f:
-            for line in textwrap2.wrap(string, maxLength):
-                f.append(keyString, line + ' ' * (maxLength - len(line)))
+        for line in textwrap2.wrap(string, maxLength):
+            self.post(keyString, line + ' ' * (maxLength - len(line)))
 
 if __name__ == "__main__":
     print "running a test..."

@@ -45,10 +45,11 @@ if __name__ == "__main__":
                     'ch2_range': 1, 'clock_source': 'reference', 'trigger_level2': 1.0, 'trigger_level1': 1.0,
                     'ch2_coupling': 'DC', 'trigger_coupling': 'DC', 'ch2_filter': False, 'trigger_operation': 'or',
                     'ch1_coupling': 'DC', 'trigger_source2': 'disabled', 'trigger_source1': 'external',
-                    'recordsPerBuffer': 10, 'sample_rate': 40, 'timeout': 3000, 'ch1_range': 1,
-                    'ch2_enabled': True, 'recordsPerAcquisition': 10}
+                    'recordsPerBuffer': 1, 'sample_rate': 40, 'timeout': 3000, 'ch1_range': 1,
+                    'ch2_enabled': True, 'recordsPerAcquisition': 1}
+    aConfig = util.dict2obj(**alazarConfig)
 
-    ehe = eHeExperiment(expt_path, prefix, alazarConfig, fridgeParams, filamentParams)
+    ehe = eHeExperiment(expt_path, prefix, alazarConfig, fridgeParams, filamentParams, newDataFile=False)
     print ehe.filename
 
     ehe.note('start experiment. ')
@@ -69,16 +70,33 @@ if __name__ == "__main__":
 
 
     ehe.set_DC_mode()
-    ehe.rinse_n_fire(threshold=60e-3, intCallback=na_monit);
-
+#    ehe.rinse_n_fire(threshold=60e-3, intCallback=na_monit);
+#
     ehe.get_peak()
     ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=10e6)
-    ehe.set_volt_sweep(1.80, 1.0, 0.05, 0.8, 0.8, 0.05, doublePass=True)
+
+    ehe.set_volt_sweep(2.0, 0.5, 0.05, 0.8, 0.8, 0.05, doublePass=True)
     ehe.get_na_sweep_voltage(ehe.sample.peakF, 2e6)
-    ehe.set_ramp_mode(high=1.80, low=1.0)
-    ehe.nwa.config.range = [ehe.sample.peakF - 1e6, ehe.sample.peakF + 1e6, 120]
+
+#    ehe.set_volt_sweep(2.0, 0.5, 0.0025, 0.8, 0.8, 0.05, doublePass=True)
+#    ehe.get_na_sweep_voltage(ehe.sample.peakF, 2e6)
+
+    ehe.set_ramp_mode(high=2.0, low=0.5)
+    ehe.trap.trigger()
+    ehe.set_alazar_average(average=1)
+    ehe.nwa.config.range = [ehe.sample.peakF - 1e6, ehe.sample.peakF + 1e6, 320]
     ehe.nwa.sweep()
 
+#    ehe.clear_nwa_plotter()
+#    ehe.set_alazar_average(average=10)
+#    ehe.nwa.config.range = [ehe.sample.peakF - 1e6, ehe.sample.peakF + 1e6, 80]
+#    ehe.nwa.sweep()
+
+    ehe.clear_nwa_plotter()
+    ehe.set_alazar_average(average=20)
+    ehe.nwa.config.range = [ehe.sample.peakF - 1e6, ehe.sample.peakF + 1e6, 80]
+    ehe.nwa.sweep()
+    
     # mag = ehe.nwa.sweep()
     #offset, amplitude, center, hwhm = dsfit.fitlor(ehe.nwa.config.fpts, mag)
     # print center

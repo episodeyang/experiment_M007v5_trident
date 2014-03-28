@@ -40,13 +40,10 @@ class eHeExperiment():
         self.trigger = self.im['BNC_sync']
         self.alazar = Alazar()
 
-    def __init__(self, expt_path, prefix, alazar_config, fridgeParams, filamentParams, newDataFile=False):
+    def __init__(self, expt_path, prefix, alazarConfig, fridgeParams, filamentParams, newDataFile=False):
         self.expt_path = expt_path
         self.prefix = prefix
-        if newDataFile == True:
-            self.filename = get_next_filename(self.expt_path, self.prefix, suffix='.h5')
-        else:
-            self.filename = get_current_filename(self.expt_path, self.prefix, suffix='.h5')
+
         self.note_maxLength = 79;
         self.config = lambda: None;
 
@@ -67,8 +64,10 @@ class eHeExperiment():
         self.lb.set_mod(False)
         self.lb.set_power(0)
 
-        self.alazar.config = AlazarConfig(alazar_config)
-        self.alazar.configure()
+        self.alazar.configure(AlazarConfig(alazarConfig))
+        # self.alazarConfig = alazarConfig
+        # self.alazar.config = AlazarConfig(alazarConfig)
+        # self.alazar.configure()
 
         self.nwa = lambda: None;
         self.nwa.sweep = self.nwa_sweep;
@@ -89,7 +88,8 @@ class eHeExperiment():
         self.na.take_one = self.na_take_one;
 
         #this is the dataCache attached to the experiment.
-        self.dataCache = dataCacheProxy(self)
+        self.dataCache = dataCacheProxy(self, newFile=newDataFile)
+        self.filename = self.dataCache.filename
 
         self.count = -1
         self.t0 = time.time()
@@ -127,8 +127,8 @@ class eHeExperiment():
         high and low overrides amp and offset.
         """
         if low != None and high != None:
-            amp = abs(high-low)/2.
-            offset = max(high, low) - amp
+            amp = abs(high-low)
+            offset = max(high, low) - amp/2.
         if amp != None:
             self.trap.set_amplitude(amp)
         if offset != None:
@@ -143,7 +143,7 @@ class eHeExperiment():
     def get_trap_high_low(self):
         offset = self.trap.get_offset()
         amp = self.trap.get_amplitude()
-        return offset + amp, offset - amp
+        return offset + amp/2.0, offset - amp/2.0
 
     def nwa_sweep(self, fpts=None, config=None):
         def amp(pair):
@@ -173,6 +173,7 @@ class eHeExperiment():
         self.dataCache.note(util.get_date_time_string(), keyString='startTime')
         high, low = self.get_trap_high_low()
         self.dataCache.note('ramp high: {}, low: {}'.format(high, low))
+        self.dataCache.note('averaging(recordsPerBuffer): {}'.format(self.alazar.config.recordsPerBuffer))
         self.dataCache.set('fpts', self.nwa.config.fpts)
         start, end, n = self.nwa.config.range
         self.dataCache.note(
@@ -200,6 +201,15 @@ class eHeExperiment():
             self.dataCache.post('I', ch1_pts)
             self.dataCache.post('Q', ch2_pts)
         return mags
+
+    def set_alazar_average(self, average=1):
+        self.alazar.config.recordsPerBuffer = average
+        self.alazar.config.recordsPerAcquisition = average
+        self.alazar.config.timeout = 1000*average
+        self.alazar.configure()#self.alazar.config)
+        # self.alazarConfig['recordsPerBuffer'] = average
+        # self.alazarConfig['recordsPerAcquisition'] = average
+        # self.alazar.configure(AlazarConfig(self.alazarConfig))
 
     def gate_sweep(self, config):
         print "Configuring card"
@@ -297,6 +307,21 @@ class eHeExperiment():
         print "the peak is found at: ", self.sample.peakF
         return fpts, mags, phases
 
+    def clear_plotter(self):
+        self.plotter.clear('na spectrum')
+        self.plotter.clear('nwa mag')
+        self.plotter.clear('nwa phase')
+        self.plotter.clear('nwa I')
+        self.plotter.clear('nwa Q')
+
+    def clear_na_plotter(self):
+        self.plotter.clear('na spectrum')
+
+    def clear_nwa_plotter(self):
+        self.plotter.clear('nwa mag')
+        self.plotter.clear('nwa phase')
+        self.plotter.clear('nwa I')
+        self.plotter.clear('nwa Q')
 
 if __name__ == "__main__":
     print "main just ran but nothing is here."

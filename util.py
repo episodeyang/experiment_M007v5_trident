@@ -56,3 +56,8 @@ def days_hours_minutes(seconds):
     minutes = seconds / 60 - days * 24 * 60 - hours * 60
     return days, hours, minutes
 
+class dict2obj:
+    def __init__(self, **entries):
+        self.__dict__.update(entries)
+    def __repr__(self):
+        return '<%/s>'%str('\n'.join('%s:%s'%(k,repr(v)) for (k,v) in self.__dict__.iteritems()))
