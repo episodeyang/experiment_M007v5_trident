@@ -69,12 +69,13 @@ if __name__ == "__main__":
 
 
     ehe.set_DC_mode()
-    ehe.rinse_n_fire(threshold=80e-3, intCallback=na_monit);
+    ehe.rinse_n_fire(threshold=60e-3, intCallback=na_monit);
 
     ehe.get_peak()
-    ehe.set_volt_sweep(1.85, 1.0, 0.005, 0.8, 0.8, 0.05, doublePass=True)
+    ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=10e6)
+    ehe.set_volt_sweep(1.80, 1.0, 0.05, 0.8, 0.8, 0.05, doublePass=True)
     ehe.get_na_sweep_voltage(ehe.sample.peakF, 2e6)
-    ehe.set_ramp_mode(high=1.85, low=1.0)
+    ehe.set_ramp_mode(high=1.80, low=1.0)
     ehe.nwa.config.range = [ehe.sample.peakF - 1e6, ehe.sample.peakF + 1e6, 120]
     ehe.nwa.sweep()
 

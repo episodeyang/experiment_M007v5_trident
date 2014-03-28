@@ -11,7 +11,7 @@ def toc():
     global tic_time
     return time.time() - tic_time
 
-def get_date_time_string(self):
+def get_date_time_string():
     now = datetime.now()
     return "{}/{}/{} {}:{}:{}".format(now.year, now.month, now.day, now.hour, now.minute, now.second)
 

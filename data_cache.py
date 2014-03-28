@@ -105,6 +105,12 @@ class dataCacheProxy():
         try: index = int(self.current_stack[-5:]) + 1
         except: index = 0
         self.current_stack = self.stack_prefix + str(100000 + index)[1:]
+        with SlabFile(self.path) as f:
+            try:
+                f.create_group(self.current_stack)
+            except ValueError, error:
+                print "{} already exists. Move to next index.".format(self.current_stack)
+                self.new_stack()
 
     def note(self, string, keyString=None, printOption=False, maxLength=79):
         if keyString == None:

@@ -126,8 +126,8 @@ class eHeExperiment():
         """
         high and low overrides amp and offset.
         """
-        if low !=None and high != None:
-            amp = abs(high-low)
+        if low != None and high != None:
+            amp = abs(high-low)/2.
             offset = max(high, low) - amp
         if amp != None:
             self.trap.set_amplitude(amp)
@@ -139,6 +139,11 @@ class eHeExperiment():
         self.trap.set_burst_state('on')
         self.trap.set_trigger_source('ext')
         self.na.set_output('off')
+
+    def get_trap_high_low(self):
+        offset = self.trap.get_offset()
+        amp = self.trap.get_amplitude()
+        return offset + amp, offset - amp
 
     def nwa_sweep(self, fpts=None, config=None):
         def amp(pair):
@@ -166,6 +171,8 @@ class eHeExperiment():
         self.dataCache.new_stack()
         self.dataCache.note('alazar_nwa_sweep', keyString='type')
         self.dataCache.note(util.get_date_time_string(), keyString='startTime')
+        high, low = self.get_trap_high_low()
+        self.dataCache.note('ramp high: {}, low: {}'.format(high, low))
         self.dataCache.set('fpts', self.nwa.config.fpts)
         start, end, n = self.nwa.config.range
         self.dataCache.note(
@@ -188,8 +195,8 @@ class eHeExperiment():
             self.plotter.append_z('nwa I', ch1_pts)
             self.plotter.append_z('nwa Q', ch2_pts)
 
-            self.dataCache.post('mags', mags)
-            self.dataCache.post('phases', phases)
+            # self.dataCache.post('mags', mags)
+            # self.dataCache.post('phases', phases)
             self.dataCache.post('I', ch1_pts)
             self.dataCache.post('Q', ch2_pts)
         return mags
@@ -278,10 +285,12 @@ class eHeExperiment():
         self.note("fridge's cold, start sweeping...")
         self.note("sweep probe frequency and trap electrode")
 
-    def get_peak(self, set_nwa=True, nwa_span=30e6):
-        if set_nwa :
+    def get_peak(self, nwa_center=None, nwa_span=30e6, set_nwa=True):
+        if set_nwa:
             self.na.set_sweep_points(320)
-            self.na.set_center_frequency(self.sample.freqNoE)
+            if nwa_center == None:
+                nwa_center = self.sample.freqNoE;
+            self.na.set_center_frequency(nwa_center)
             self.na.set_span(nwa_span)
         fpts, mags, phases = self.na.take_one()
         self.sample.peakF = fpts[argmax(mags)]
