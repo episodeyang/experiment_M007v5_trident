@@ -71,7 +71,8 @@ if __name__ == "__main__":
 
     ehe.set_DC_mode()
     ehe.rinse_n_fire(threshold=60e-3, intCallback=na_monit);
-#
+    ehe.set_DC_mode()
+    ehe.get_peak()
     ehe.get_peak()
     ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=10e6)
     

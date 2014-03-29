@@ -248,10 +248,10 @@ class eHeExperiment():
         for trapV, resV in zip(self.trapVs, self.resVs):
             self.trap.set_volt(trapV)
             self.res.set_volt(resV)
-            fpts, mag, phase = self.na.take_one(plotName=plotName)
+            fpts, mags, phases = self.na.take_one(plotName=plotName)
             # self.dataCache.set('fpts', fpts)
-            self.dataCache.post('mags', fpts)
-            self.dataCache.post('phases', fpts)
+            self.dataCache.post('mags', mags)
+            self.dataCache.post('phases', phases)
         offset, amplitude, center, hwhm = dsfit.fitlor(fpts, dBmtoW(mag))
         print "center frequency is: ", center
         return center
