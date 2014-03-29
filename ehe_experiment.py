@@ -176,10 +176,7 @@ class eHeExperiment():
         self.dataCache.note('averaging(recordsPerBuffer): {}'.format(self.alazar.config.recordsPerBuffer))
         self.dataCache.set('fpts', self.nwa.config.fpts)
         start, end, n = self.nwa.config.range
-        self.dataCache.note(
-            'start freq: {}, end freq: {}, number of points: {}'.format(start, end, n),
-            keyString='type'
-            );
+        self.dataCache.note('start freq: {}, end freq: {}, number of points: {}'.format(start, end, n));
 
         tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data()
         for f in self.nwa.config.fpts:
@@ -246,12 +243,14 @@ class eHeExperiment():
             'trapStart: {} , trapEnd: {} , trapStep: {} , resStart: {} , resEnd: {} , resStep: {} , doublePass: {} '.format(
                 trapStart, trapEnd, trapStep, resStart, resEnd, resStep, doublePass))
 
+        fpts, mag, phase = self.na.take_one(plotName=plotName)
+        self.dataCache.set('fpts', fpts)
         for trapV, resV in zip(self.trapVs, self.resVs):
             self.trap.set_volt(trapV)
             self.res.set_volt(resV)
             fpts, mag, phase = self.na.take_one(plotName=plotName)
-            self.dataCache.set('fpts', fpts)
-            self.dataCache.post('magss', fpts)
+            # self.dataCache.set('fpts', fpts)
+            self.dataCache.post('mags', fpts)
             self.dataCache.post('phases', fpts)
         offset, amplitude, center, hwhm = dsfit.fitlor(fpts, dBmtoW(mag))
         print "center frequency is: ", center
