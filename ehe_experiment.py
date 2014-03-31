@@ -149,15 +149,6 @@ class eHeExperiment():
         return offset + amp/2.0, offset - amp/2.0
 
     def nwa_sweep(self, fpts=None, config=None):
-        def amp(pair):
-            return sqrt(pair[0] ** 2 + pair[1] ** 2)
-
-        def phase(pair):
-            if pair[1] != 0:
-                theta = arctan(pair[0] / pair[1])
-            else:
-                theta = pi / 2;
-            return theta
 
         if fpts == None:
             self.nwa.config.fpts = linspace(self.nwa.config.range[0], self.nwa.config.range[1],
@@ -186,10 +177,10 @@ class eHeExperiment():
             self.lb.set_frequency(float(f))
             tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data(excise=(0, -40))  #excise=(0,4992))
 
-            ch1_avg = mean(ch1_pts)
-            ch2_avg = mean(ch2_pts)
-            mags = map(amp, zip(ch1_pts, ch2_pts))
-            phases = map(phase, zip(ch1_pts, ch2_pts))
+            # ch1_avg = mean(ch1_pts)
+            # ch2_avg = mean(ch2_pts)
+            mags = ch1_pts**2 + ch2_pts**2
+            phases = map(util.phase, zip(ch1_pts, ch2_pts))
 
             self.plotter.append_z('nwa mag', mags)
             self.plotter.append_z('nwa phase', phases)

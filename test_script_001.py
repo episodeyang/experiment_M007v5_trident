@@ -45,7 +45,7 @@ if __name__ == "__main__":
                     'ch2_range': 1, 'clock_source': 'reference', 'trigger_level2': 1.0, 'trigger_level1': 1.0,
                     'ch2_coupling': 'DC', 'trigger_coupling': 'DC', 'ch2_filter': False, 'trigger_operation': 'or',
                     'ch1_coupling': 'DC', 'trigger_source2': 'disabled', 'trigger_source1': 'external',
-                    'recordsPerBuffer': 1, 'sample_rate': 40, 'timeout': 3000, 'ch1_range': 1,
+                    'recordsPerBuffer': 1, 'sample_rate': 160, 'timeout': 3000, 'ch1_range': 1,
                     'ch2_enabled': True, 'recordsPerAcquisition': 1}
     aConfig = util.dict2obj(**alazarConfig)
 

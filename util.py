@@ -61,3 +61,13 @@ class dict2obj:
         self.__dict__.update(entries)
     def __repr__(self):
         return '<%/s>'%str('\n'.join('%s:%s'%(k,repr(v)) for (k,v) in self.__dict__.iteritems()))
+
+def amp(pair):
+    return sqrt(pair[0] ** 2 + pair[1] ** 2)
+
+def phase(pair):
+    if pair[1] != 0:
+        theta = arctan(pair[0] / pair[1])
+    else:
+        theta = pi / 2;
+    return theta
