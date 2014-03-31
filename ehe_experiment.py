@@ -40,56 +40,58 @@ class eHeExperiment():
         self.trigger = self.im['BNC_sync']
         self.alazar = Alazar()
 
-    def __init__(self, expt_path, prefix, alazarConfig, fridgeParams, filamentParams, newDataFile=False):
-        self.expt_path = expt_path
-        self.prefix = prefix
+    def __init__(self, expt_path=None, prefix=None, alazarConfig=None, fridgeParams=None, filamentParams=None, newDataFile=False):
+        if expt_path != None and prefix!=None:
+            self.expt_path = expt_path
+            self.prefix = prefix
 
         self.note_maxLength = 79;
         self.config = lambda: None;
 
-        self.plotter = LivePlotClient()
-        self.attach_instruments();
-        self.fil.params = filamentParams
-        self.fil.update = self.updateFilament
-        self.fil.update(self.fil.params)
+        if alazarConfig != None and fridgeParams != None and filamentParams != None:
+            self.plotter = LivePlotClient()
+            self.attach_instruments();
+            self.fil.params = filamentParams
+            self.fil.update = self.updateFilament
+            self.fil.update(self.fil.params)
 
-        # self.na.set_default_state()
-        # self.na.params = naParams
-        # self.na.update = self.updateNWA
+            # self.na.set_default_state()
+            # self.na.params = naParams
+            # self.na.update = self.updateNWA
 
-        self.fridge.params = fridgeParams
+            self.fridge.params = fridgeParams
 
-        #        self.lb.set_output(False)
-        self.lb.set_pulse_ext(False)
-        self.lb.set_mod(False)
-        self.lb.set_power(0)
+            #        self.lb.set_output(False)
+            self.lb.set_pulse_ext(False)
+            self.lb.set_mod(False)
+            self.lb.set_power(0)
 
-        self.alazar.configure(AlazarConfig(alazarConfig))
-        # self.alazarConfig = alazarConfig
-        # self.alazar.config = AlazarConfig(alazarConfig)
-        # self.alazar.configure()
+            self.alazar.configure(AlazarConfig(alazarConfig))
+            # self.alazarConfig = alazarConfig
+            # self.alazar.config = AlazarConfig(alazarConfig)
+            # self.alazar.configure()
 
-        self.nwa = lambda: None;
-        self.nwa.sweep = self.nwa_sweep;
-        self.nwa.config = lambda: None;
+            self.nwa = lambda: None;
+            self.nwa.sweep = self.nwa_sweep;
+            self.nwa.config = lambda: None;
 
-        self.res = lambda: 0
+            self.res = lambda: 0
 
-        def set_volt_res(volt):
-            self.srs.set_volt(volt, channel=1)
+            def set_volt_res(volt):
+                self.srs.set_volt(volt, channel=1)
 
-        def get_volt_res():
-            return self.srs.get_volt(channel=1)
+            def get_volt_res():
+                return self.srs.get_volt(channel=1)
 
-        self.res.set_volt = set_volt_res
-        self.res.get_volt = get_volt_res
+            self.res.set_volt = set_volt_res
+            self.res.get_volt = get_volt_res
 
-        self.configNWA()
-        self.na.take_one = self.na_take_one;
+            self.configNWA()
+            self.na.take_one = self.na_take_one;
 
-        #this is the dataCache attached to the experiment.
-        self.dataCache = dataCacheProxy(self, newFile=newDataFile)
-        self.filename = self.dataCache.filename
+            #this is the dataCache attached to the experiment.
+            self.dataCache = dataCacheProxy(self, newFile=newDataFile)
+            self.filename = self.dataCache.filename
 
         self.count = -1
         self.t0 = time.time()
