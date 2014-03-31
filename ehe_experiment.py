@@ -92,7 +92,8 @@ class eHeExperiment():
             #this is the dataCache attached to the experiment.
             self.dataCache = dataCacheProxy(self, newFile=newDataFile)
             self.filename = self.dataCache.filename
-
+        else:
+            print "using eHeExperiment as a method proxy."
         self.count = -1
         self.t0 = time.time()
 

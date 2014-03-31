@@ -78,16 +78,23 @@ class dataCacheProxy():
         """
         append a datapoint to the current data stack.
         """
-        if self.current_stack != '':
-            route = self.current_stack + "." + route
+
+        try:
+            if self.current_stack != '':
+                route = self.current_stack + "." + route
+        except AttributeError:
+            pass
         self.append(route, data)
 
     def set(self, route, data):
         """
         add a datapoint to the current data stack.
         """
-        if self.current_stack != '':
-            route = self.current_stack + "." + route
+        try:
+            if self.current_stack != '':
+                route = self.current_stack + "." + route
+        except AttributeError:
+            pass
         self.add(route, data)
 
     def get(self, keyString):
