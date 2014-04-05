@@ -22,12 +22,13 @@ import pstats
 
 import util as util
 from ehe_experiment import eHeExperiment
+from time import sleep, time
 
 if __name__ == "__main__":
     expt_path = r'S:\_Data\140312 - EonHe M007v5 Trident\data'
     prefix = 'experimental'
     fridgeParams = {
-        'wait_for_temp': 0.040,
+        'wait_for_temp': 0.080,
         'min_temp_wait_time': 60  #11 minutes
     }
     filamentParams = {
@@ -45,7 +46,7 @@ if __name__ == "__main__":
                     'ch2_range': 1, 'clock_source': 'reference', 'trigger_level2': 1.0, 'trigger_level1': 1.0,
                     'ch2_coupling': 'DC', 'trigger_coupling': 'DC', 'ch2_filter': False, 'trigger_operation': 'or',
                     'ch1_coupling': 'DC', 'trigger_source2': 'disabled', 'trigger_source1': 'external',
-                    'recordsPerBuffer': 1, 'sample_rate': 160, 'timeout': 3000, 'ch1_range': 1,
+                    'recordsPerBuffer': 1, 'sample_rate': 5000, 'timeout': 3000, 'ch1_range': 1,
                     'ch2_enabled': True, 'recordsPerAcquisition': 1}
     aConfig = util.dict2obj(**alazarConfig)
 
@@ -68,16 +69,21 @@ if __name__ == "__main__":
     ehe.plotter.clear('nwa I')
     ehe.plotter.clear('nwa Q')
 
-
+    ehe.trap.setup_volt_source(None, 3.5, 0, 'on')
     ehe.set_DC_mode()
     ehe.rinse_n_fire(threshold=60e-3, intCallback=na_monit);
     ehe.set_DC_mode()
+    
     ehe.get_peak()
+    print 'now sleep 10 senconds'
+    sleep(10)
     ehe.get_peak()
     ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=10e6)
     
     def set_n_get(high, low, resV = 0.8):
         ehe.set_DC_mode()
+        print "now sleep 2 seconds"
+        sleep(2)
         ehe.get_peak()
         ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=10e6)
         ehe.clear_na_plotter()
@@ -85,7 +91,7 @@ if __name__ == "__main__":
         ehe.get_na_sweep_voltage(ehe.sample.peakF, 2e6)
     
         ehe.clear_na_plotter()
-        ehe.set_volt_sweep(high, low, 0.005, resV, resV, 0.05, doublePass=True)
+        ehe.set_volt_sweep(high, low, 0.001, resV, resV, 0.05, doublePass=True)
         ehe.get_na_sweep_voltage(ehe.sample.peakF, 2e6)
     
         ehe.set_ramp_mode(high=high, low=low)
@@ -96,11 +102,14 @@ if __name__ == "__main__":
         ehe.nwa.sweep()
     
         ehe.clear_nwa_plotter()
-        ehe.set_alazar_average(average=10)
+        ehe.set_alazar_average(average=100)
         ehe.nwa.config.range = [ehe.sample.peakF - 1e6, ehe.sample.peakF + 1e6, 80]
         ehe.nwa.sweep()
-    
-    set_n_get(2, 1, 1.5)
+        
+    for resV in arange(3.2, 0.4,-0.4):
+        for trapV in arange(3.4, 0.2, -0.4):
+            set_n_get(trapV+0.4, trapV, resV)
+            ehe.dataCache.note('resV: {}, trapV: {}'.format(resV, trapV))
     
 #    set_n_get(3, 2.5)
 #    set_n_get(2.5, 2)

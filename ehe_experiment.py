@@ -123,7 +123,7 @@ class eHeExperiment():
     def set_DC_mode(self):
         self.na.set_output('on')
         self.lb.set_output(False)
-        self.trap.setup_volt_source(None, 3, 0, 'off')
+        self.trap.setup_volt_source(None, 3.5, 0, 'on')
 
     def set_ramp_mode(self, high=None, low=None, offset=None, amp=None):
         """
@@ -166,20 +166,25 @@ class eHeExperiment():
         self.dataCache.note('alazar_nwa_sweep', keyString='type')
         self.dataCache.note(util.get_date_time_string(), keyString='startTime')
         high, low = self.get_trap_high_low()
+        self.dataCache.set('rampHigh', high)
+        self.dataCache.set('rampLow', low)
         self.dataCache.note('ramp high: {}, low: {}'.format(high, low))
         self.dataCache.note('averaging(recordsPerBuffer): {}'.format(self.alazar.config.recordsPerBuffer))
         self.dataCache.set('fpts', self.nwa.config.fpts)
         start, end, n = self.nwa.config.range
+        self.dataCache.set('fStart', start)
+        self.dataCache.set('fEnd', end)
+        self.dataCache.set('fN', n)        
         self.dataCache.note('start freq: {}, end freq: {}, number of points: {}'.format(start, end, n));
-
+        
         tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data()
         for f in self.nwa.config.fpts:
             self.lb.set_frequency(float(f))
-            tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data(excise=(0, -40))  #excise=(0,4992))
+            tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data(excise=(0, -56))  #excise=(0,4992))
 
             # ch1_avg = mean(ch1_pts)
             # ch2_avg = mean(ch2_pts)
-            mags = ch1_pts**2 + ch2_pts**2
+            mags = sqrt(ch1_pts**2 + ch2_pts**2)
             phases = map(util.phase, zip(ch1_pts, ch2_pts))
 
             self.plotter.append_z('nwa mag', mags)
@@ -236,7 +241,14 @@ class eHeExperiment():
         self.dataCache.note(
             'trapStart: {} , trapEnd: {} , trapStep: {} , resStart: {} , resEnd: {} , resStep: {} , doublePass: {} '.format(
                 trapStart, trapEnd, trapStep, resStart, resEnd, resStep, doublePass))
-
+        self.dataCache.set('trapStart', trapStart)
+        self.dataCache.set('trapEnd', trapEnd)
+        self.dataCache.set('trapStep', trapStep)
+        self.dataCache.set('resStart', resStart)
+        self.dataCache.set('resEnd', resEnd)
+        self.dataCache.set('resStep', resStep)
+        self.dataCache.set('doublePass', str(doublePass))
+        
         fpts, mag, phase = self.na.take_one(plotName=plotName)
         self.dataCache.set('fpts', fpts)
         for trapV, resV in zip(self.trapVs, self.resVs):
