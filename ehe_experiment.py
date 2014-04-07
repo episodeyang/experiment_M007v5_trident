@@ -168,6 +168,7 @@ class eHeExperiment():
         high, low = self.get_trap_high_low()
         self.dataCache.set('rampHigh', high)
         self.dataCache.set('rampLow', low)
+        self.dataCache.set('resV', self.res.get_volt())
         self.dataCache.note('ramp high: {}, low: {}'.format(high, low))
         self.dataCache.note('averaging(recordsPerBuffer): {}'.format(self.alazar.config.recordsPerBuffer))
         self.dataCache.set('fpts', self.nwa.config.fpts)
