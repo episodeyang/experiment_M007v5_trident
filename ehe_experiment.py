@@ -73,6 +73,7 @@ class eHeExperiment():
 
             self.nwa = lambda: None;
             self.nwa.sweep = self.nwa_sweep;
+            self.nwa.scan = self.nwa_scan;
             self.nwa.config = lambda: None;
 
             self.res = lambda: 0
@@ -85,6 +86,7 @@ class eHeExperiment():
 
             self.res.set_volt = set_volt_res
             self.res.get_volt = get_volt_res
+            self.res.set_Vs = self.res_set_Vs
 
             self.configNWA()
             self.na.take_one = self.na_take_one;
@@ -126,6 +128,15 @@ class eHeExperiment():
         self.trap.setup_volt_source(None, 3.5, 0, 'on')
 
     def set_ramp_mode(self, high=None, low=None, offset=None, amp=None):
+        self.set_ramp(high, low, offset, amp)
+        self.lb.set_output(True)
+        self.trap.set_burst_phase(90)
+        self.trap.set_function('ramp')
+        self.trap.set_burst_state('on')
+        self.trap.set_trigger_source('ext')
+        self.na.set_output('off')
+
+    def set_ramp(self, high=None, low=None, offset=None, amp=None):
         """
         high and low overrides amp and offset.
         """
@@ -136,12 +147,6 @@ class eHeExperiment():
             self.trap.set_amplitude(amp)
         if offset != None:
             self.trap.set_offset(offset)
-        self.lb.set_output(True)
-        self.trap.set_burst_phase(90)
-        self.trap.set_function('ramp')
-        self.trap.set_burst_state('on')
-        self.trap.set_trigger_source('ext')
-        self.na.set_output('off')
 
     def get_trap_high_low(self):
         offset = self.trap.get_offset()
@@ -198,6 +203,65 @@ class eHeExperiment():
             self.dataCache.post('I', ch1_pts)
             self.dataCache.post('Q', ch2_pts)
         return mags
+
+    def res_set_Vs(self, resStart, resStop, resStep=None, n=None):
+        if resStep == None:
+            self.resVs = linspace(resStart, resStop, n);
+        else:
+            self.resVs = util.ramp(resStart, resStop, resStep)
+
+    def set_ramp_stops(self, high, low, window):
+        self.rampHighs = arange(high, low, -abs(window))[:-1]
+        self.rampLows = arange(high, low, -abs(window))[1:]
+
+    def nwa_scan(self, frequency=None):
+        """
+        nwa scan in [window,] following resVs and rampHighs, rampLows
+        """
+        if frequency != None:
+            self.lb.set_frequency(frequency)
+            self.nwa.config.frequency = frequency
+        else:
+            self.nwa.config.frequency = self.lb.get_frequency();
+
+        self.dataCache.new_stack()
+        self.dataCache.note('alazar_single_f_resV_scan', keyString='type')
+        self.dataCache.note(util.get_date_time_string(), keyString='startTime')
+        self.dataCache.note('averaging(recordsPerBuffer): {}'.format(self.alazar.config.recordsPerBuffer))
+        self.dataCache.set('frequency', self.nwa.config.frequency)
+
+        tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data()
+
+        for resV in self.resVs:
+            self.res.set_volt(resV)
+            tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data(excise=(0, -56))  #excise=(0,4992))
+
+            for ind, high_low in enumerate(zip(self.rampHighs, self.rampLows)):
+                group_prefix = 'ramp_{}.'.format(str(1000+ind)[1:])
+
+                self.dataCache.post(group_prefix+'resVs', resV)
+
+                high, low = high_low;
+                self.set_ramp(high=high, low=low)
+                self.dataCache.post(group_prefix+'rampHighs', high)
+                self.dataCache.post(group_prefix+'rampLows', low)
+                self.dataCache.note(group_prefix+'ramp high: {}, low: {}'.format(high, low))
+
+                tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data(excise=(0, -56))  #excise=(0,4992))
+
+                mags = sqrt(ch1_pts**2 + ch2_pts**2)
+                phases = map(util.phase, zip(ch1_pts, ch2_pts))
+
+                if ind == 0:
+                    self.plotter.append_z('nwa mag', mags)
+                    self.plotter.append_z('nwa phase', phases)
+                    self.plotter.append_z('nwa I', ch1_pts)
+                    self.plotter.append_z('nwa Q', ch2_pts)
+
+                # self.dataCache.post('mags', mags)
+                # self.dataCache.post('phases', phases)
+                self.dataCache.post(group_prefix+'I', ch1_pts)
+                self.dataCache.post(group_prefix+'Q', ch2_pts)
 
     def set_alazar_average(self, average=1):
         self.alazar.config.recordsPerBuffer = average

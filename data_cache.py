@@ -56,7 +56,7 @@ class dataCacheProxy():
                 return add_data(f, group[keyList[0]], keyList[1:], data)
 
         keyList = keyString.split('.')
-        with SlabFile(self.path) as f:
+        with SlabFile(self.path, 'w') as f:
             add_data(f, f, keyList, data)
 
     def append(self, keyString, data):
@@ -71,7 +71,7 @@ class dataCacheProxy():
                 return append_data(f, group[keyList[0]], keyList[1:], data)
 
         keyList = keyString.split('.')
-        with SlabFile(self.path) as f:
+        with SlabFile(self.path, 'w') as f:
             append_data(f, f, keyList, data)
 
     def post(self, route, data):
@@ -105,7 +105,7 @@ class dataCacheProxy():
                 return get_data(f[keyList[0]], keyList[1:])
 
         keyList = keyString.split('.')
-        with SlabFile(self.path) as f:
+        with SlabFile(self.path, 'r') as f:
             return get_data(f, keyList)
 
     def new_stack(self):

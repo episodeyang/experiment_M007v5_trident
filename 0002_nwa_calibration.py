@@ -82,13 +82,11 @@ if __name__ == "__main__":
     # fire and start taking data at high T.
     ehe.rinse_n_fire(threshold=600e-3, intCallback=na_monit);
 
+    ehe.clear_nwa_plotter()
+    ehe.set_alazar_average(average=1)
+    ehe.nwa.sweep()
+    ehe.dataCache.set('temperature', ehe.fridge.get_temperature())
 
-    for ii in range(100):
-        ehe.clear_nwa_plotter()
-        ehe.set_alazar_average(average=1)
-        ehe.nwa.sweep()
-        ehe.dataCache.set('temperature', ehe.fridge.get_temperature())
-
-        ehe.set_alazar_average(average=100)
-        ehe.nwa.sweep()
-        ehe.dataCache.set('temperature', ehe.fridge.get_temperature())
+    ehe.set_alazar_average(average=100)
+    ehe.nwa.sweep()
+    ehe.dataCache.set('temperature', ehe.fridge.get_temperature())

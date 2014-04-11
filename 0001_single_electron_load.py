@@ -71,7 +71,26 @@ if __name__ == "__main__":
     ehe.set_DC_mode()
     ehe.set_ramp_mode(offset=3.5, amp=0.25)
 
-    ehe.res.set_volt(-1.5)
+    #ehe.res.set_volt(-1.5)
+    ehe.res.set_volt(0.5)
+
+    ehe.get_peak()
+    print 'now sleep 3 seconds'
+    sleep(3)
+    ehe.get_peak()
+    ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=10e6)
+    ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=3e6)
+    ehe.nwa.config.range = [ehe.sample.peakF - 1e6, ehe.sample.peakF + 1e6, 320]
+
+    for offset in linspace(1.0, 0.5, 50):
+        ehe.clear_nwa_plotter()
+        ehe.trap.set_offset(offset)
+        ehe.set_alazar_average(average=1)
+        ehe.nwa.sweep()
+
+        ehe.set_alazar_average(average=100)
+        ehe.nwa.sweep()
+
     ehe.res.set_volt(0.0)
 
     ehe.get_peak()
@@ -82,7 +101,7 @@ if __name__ == "__main__":
     ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=3e6)
     ehe.nwa.config.range = [ehe.sample.peakF - 1e6, ehe.sample.peakF + 1e6, 320]
 
-    for offset in linspace(1.5, 0, 100):
+    for offset in linspace(0.5, 0, 50):
         ehe.clear_nwa_plotter()
         ehe.trap.set_offset(offset)
         ehe.set_alazar_average(average=1)
