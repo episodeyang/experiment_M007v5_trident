@@ -56,7 +56,7 @@ class dataCacheProxy():
                 return add_data(f, group[keyList[0]], keyList[1:], data)
 
         keyList = keyString.split('.')
-        with SlabFile(self.path, 'w') as f:
+        with SlabFile(self.path, 'a') as f:
             add_data(f, f, keyList, data)
 
     def append(self, keyString, data):
@@ -71,7 +71,7 @@ class dataCacheProxy():
                 return append_data(f, group[keyList[0]], keyList[1:], data)
 
         keyList = keyString.split('.')
-        with SlabFile(self.path, 'w') as f:
+        with SlabFile(self.path, 'a') as f:
             append_data(f, f, keyList, data)
 
     def post(self, route, data):
@@ -97,17 +97,27 @@ class dataCacheProxy():
             pass
         self.add(route, data)
 
-    def get(self, keyString):
+    def get(self, keyString=''):
         def get_data(f, keyList):
-            if len(keyList) == 1:
-                return f[keyList[0]][...];
+            if len(keyList) == 0:
+                return f.keys();
             else:
-                return get_data(f[keyList[0]], keyList[1:])
+                return get_data(f, keyList[1:])
 
         keyList = keyString.split('.')
         with SlabFile(self.path, 'r') as f:
             return get_data(f, keyList)
 
+    def index(self, keyString):
+        def get_indices(f, keyList):
+            if len(keyList) == 1:
+                return f[keyList[0]].keys()
+            else:
+                return get_indices(f[keyList[0]], keyList[1:])
+
+        keyList = keyString.split('.')
+        with SlabFile(self.path, 'r') as f:
+            return get_indices(f, keyList)
     def new_stack(self):
         try: index = int(self.current_stack[-5:]) + 1
         except: index = 0
@@ -165,7 +175,7 @@ if __name__ == "__main__":
     #now I want to move some data to a better file
     #each experiment is a file, contains:
     # - notes
-    # - actionTitle
+    # - stack_<numeric>
     #   - configs
     #   - mags
     #   - fpts

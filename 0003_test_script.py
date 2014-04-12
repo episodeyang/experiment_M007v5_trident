@@ -71,7 +71,7 @@ if __name__ == "__main__":
 
     ehe.trap.setup_volt_source(None, 3.5, 0, 'on')
     ehe.set_DC_mode()
-    # ehe.rinse_n_fire(threshold=60e-3, intCallback=na_monit);
+    ehe.rinse_n_fire(threshold=60e-3, intCallback=na_monit);
     ehe.set_DC_mode()
     
     ehe.get_peak()
@@ -106,12 +106,10 @@ if __name__ == "__main__":
         ehe.nwa.config.range = [ehe.sample.peakF - 1e6, ehe.sample.peakF + 1e6, 80]
         ehe.nwa.sweep()
         
-    # for resV in arange(3.2, 0.4,-0.4):
-    #     for trapV in arange(3.4, 0.2, -0.4):
-    #         set_n_get(trapV+0.4, trapV, resV)
-    #         ehe.dataCache.note('resV: {}, trapV: {}'.format(resV, trapV))
-
-    set_n_get(3.2, 0.4, resV=1.5)
+    resV = 1.5
+    for trapV in arange(3.4, 0.2, -0.4):
+        set_n_get(trapV, trapV-0.4, resV)
+        ehe.dataCache.note('resV: {}, trapV: {}'.format(resV, trapV))
 
     ehe.set_alazar_average(average=100)
     ehe.set_ramp_mode(high=3, low=0)
