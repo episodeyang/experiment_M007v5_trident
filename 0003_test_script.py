@@ -80,7 +80,14 @@ if __name__ == "__main__":
     ehe.get_peak()
     ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=10e6)
 
-    def set_n_get(high, low, resV = 0.8):
+    def set_n_get(high, low, resV=None):
+        if resV == None:
+            try:
+                resV = self.res.get_volt()
+            except:
+                # just need to try again buddy!
+                resV = self.res.get_volt()
+
         ehe.set_DC_mode()
         print "now sleep 2 seconds"
         sleep(2)
@@ -106,15 +113,17 @@ if __name__ == "__main__":
         ehe.nwa.config.range = [ehe.sample.peakF - 1e6, ehe.sample.peakF + 1e6, 80]
         ehe.nwa.sweep()
         
-    resV = 1.5
-    for trapV in arange(3.4, 0.2, -0.4):
-        set_n_get(trapV, trapV-0.4, resV)
+    resV = 0.4
+    set_n_get(3.2, 0.4)
+    
+    for trapV in arange(3.2, 0, 0.4):
+        set_n_get(trapV, trapV - 0.4, resV)
         ehe.dataCache.note('resV: {}, trapV: {}'.format(resV, trapV))
 
     ehe.set_alazar_average(average=100)
     ehe.set_ramp_mode(high=3, low=0)
-    ehe.lb.set_frequency(ehe.sample.peakF)
-    ehe.set_ramp_stops(3.2, 0.4, .4)
-    ehe.res.set_Vs(1.0, 3, 0.05)
+    ehe.lb.set_frequency(ehe.sample.peakF+0.3e6)
+    ehe.set_ramp_stops(3.2, 0.4, n=1)
+    ehe.res.set_Vs(1.0, 3, 0.001)
     ehe.nwa.scan()
     

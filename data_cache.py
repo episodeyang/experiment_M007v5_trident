@@ -97,24 +97,29 @@ class dataCacheProxy():
             pass
         self.add(route, data)
 
-    def get(self, keyString=''):
+    def get(self, keyString):
         def get_data(f, keyList):
-            if len(keyList) == 0:
-                return f.keys();
+            if len(keyList) == 1:
+                return f[keyList[0]][...];
             else:
-                return get_data(f, keyList[1:])
+                return get_data(f[keyList[0]], keyList[1:])
 
         keyList = keyString.split('.')
         with SlabFile(self.path, 'r') as f:
             return get_data(f, keyList)
 
-    def index(self, keyString):
+    def index(self, keyString=''):
         def get_indices(f, keyList):
-            if len(keyList) == 1:
-                return f[keyList[0]].keys()
+            if len(keyList) == 0:
+                try:
+                    return f.keys()
+                except AttributeError, e:
+                    return e
             else:
                 return get_indices(f[keyList[0]], keyList[1:])
 
+        if keyString[-1] == '.':
+            keyString = keyString[:-1]
         keyList = keyString.split('.')
         with SlabFile(self.path, 'r') as f:
             return get_indices(f, keyList)

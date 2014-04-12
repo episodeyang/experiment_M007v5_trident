@@ -210,9 +210,13 @@ class eHeExperiment():
         else:
             self.resVs = util.ramp(resStart, resStop, resStep)
 
-    def set_ramp_stops(self, high, low, window):
-        self.rampHighs = arange(high, low, -abs(window))[:-1]
-        self.rampLows = arange(high, low, -abs(window))[1:]
+    def set_ramp_stops(self, high, low, window=None, n=None):
+        if window != None:
+            self.rampHighs = arange(high, low, -abs(window))[:-1]
+            self.rampLows = arange(high, low, -abs(window))[1:]
+        elif n >= 1:
+            self.rampHighs = linspace(high, low, n)[:-1]
+            self.rampLows = linspace(high, low, n)[1:]
 
     def nwa_scan(self, frequency=None):
         """
