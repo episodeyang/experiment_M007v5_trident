@@ -54,6 +54,7 @@ if __name__ == "__main__":
     print ehe.filename
 
     ehe.note('start experiment. ')
+    ehe.note('set SRS bandwidth to 30kHz')
 
     def na_monit():
         ehe.na.take_one("monit")
@@ -83,10 +84,10 @@ if __name__ == "__main__":
     def set_n_get(high, low, resV=None):
         if resV == None:
             try:
-                resV = self.res.get_volt()
+                resV = ehe.res.get_volt()
             except:
                 # just need to try again buddy!
-                resV = self.res.get_volt()
+                resV = ehe.res.get_volt()
 
         ehe.set_DC_mode()
         print "now sleep 2 seconds"
@@ -122,8 +123,9 @@ if __name__ == "__main__":
 
     ehe.set_alazar_average(average=100)
     ehe.set_ramp_mode(high=3, low=0)
-    ehe.lb.set_frequency(ehe.sample.peakF+0.3e6)
+    frequency = ehe.sample.peakF + 0.2e6
+    ehe.dataCache.note('probe frequency is set at {:.9f}'.format(frequency/1e9))
+    ehe.lb.set_frequency(frequency)
     ehe.set_ramp_stops(3.2, 0.4, n=1)
-    ehe.res.set_Vs(1.0, 3, 0.001)
+    ehe.res.set_Vs(0.4, 3, 0.001)
     ehe.nwa.scan()
-    
