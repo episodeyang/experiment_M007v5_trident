@@ -110,7 +110,7 @@ class dataCacheProxy():
 
     def index(self, keyString=''):
         def get_indices(f, keyList):
-            if len(keyList) == 0:
+            if len(keyList) == 0 or (keyList == ['', ]):
                 try:
                     return f.keys()
                 except AttributeError, e:
@@ -118,8 +118,11 @@ class dataCacheProxy():
             else:
                 return get_indices(f[keyList[0]], keyList[1:])
 
-        if keyString[-1] == '.':
-            keyString = keyString[:-1]
+        try:
+            if keyString[-1] == '.':
+                keyString = keyString[:-1]
+        except IndexError, e:
+            pass
         keyList = keyString.split('.')
         with SlabFile(self.path, 'r') as f:
             return get_indices(f, keyList)
