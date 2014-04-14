@@ -215,8 +215,8 @@ class eHeExperiment():
             self.rampHighs = arange(high, low, -abs(window))[:-1]
             self.rampLows = arange(high, low, -abs(window))[1:]
         elif n >= 1:
-            self.rampHighs = linspace(high, low, n)[:-1]
-            self.rampLows = linspace(high, low, n)[1:]
+            self.rampHighs = linspace(high, low, n + 1)[:-1]
+            self.rampLows = linspace(high, low, n + 1)[1:]
 
     def nwa_scan(self, frequency=None):
         """
