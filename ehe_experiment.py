@@ -241,7 +241,7 @@ class eHeExperiment():
             tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data(excise=(0, -56))  #excise=(0,4992))
 
             for ind, high_low in enumerate(zip(self.rampHighs, self.rampLows)):
-                group_prefix = 'ramp_{}.'.format(str(1000+ind)[1:])
+                group_prefix = 'ramp_{}.'.format(str(1000+ind)[-3:])
 
                 self.dataCache.post(group_prefix+'resVs', resV)
 

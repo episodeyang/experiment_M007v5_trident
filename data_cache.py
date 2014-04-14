@@ -126,6 +126,7 @@ class dataCacheProxy():
         keyList = keyString.split('.')
         with SlabFile(self.path, 'r') as f:
             return get_indices(f, keyList)
+    
     def new_stack(self):
         try: index = int(self.current_stack[-5:]) + 1
         except: index = 0

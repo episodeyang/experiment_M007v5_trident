@@ -82,7 +82,7 @@ if __name__ == "__main__":
     ehe.get_peak()
     ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=10e6)
 
-    def set_n_get(high, low, resV=None):
+    def set_n_get(high, low, resV=None, step_coarse=0.05, step_fine=.001):
         if resV == None:
             try:
                 resV = ehe.res.get_volt()
@@ -93,14 +93,15 @@ if __name__ == "__main__":
         ehe.set_DC_mode()
         print "now sleep 2 seconds"
         sleep(2)
+        
         ehe.get_peak()
         ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=10e6)
         ehe.clear_na_plotter()
-        ehe.set_volt_sweep(high, low, 0.05, resV, resV, 0.05, doublePass=True)
+        ehe.set_volt_sweep(high, low, step_coarse, resV, resV, 0.05, doublePass=True)
         ehe.get_na_sweep_voltage(ehe.sample.peakF, 2e6)
 
         ehe.clear_na_plotter()
-        ehe.set_volt_sweep(high, low, 0.001, resV, resV, 0.05, doublePass=True)
+        ehe.set_volt_sweep(high, low, step_fine, resV, resV, 0.05, doublePass=True)
         ehe.get_na_sweep_voltage(ehe.sample.peakF, 2e6)
 
         ehe.set_ramp_mode(high=high, low=low)
@@ -116,14 +117,13 @@ if __name__ == "__main__":
         ehe.nwa.sweep()
         
     resV = 0.4
-    set_n_get(3.2, 0.4, resV)
-
-    set_n_get(3.2, 0.4, resV)
-
-    for trapV in arange(3.2, 0.2, -0.2):
-        set_n_get(trapV, trapV - 0.4, resV)
-        ehe.dataCache.note('resV: {}, trapV: {}'.format(resV, trapV))
-
+    set_n_get(3.2, 0.4, resV, 0.5, 0.05)
+    
+    for resV in arange(0.4, 3.2, 0.1):
+        for trapV in arange(3.2, 0, -0.4):
+            set_n_get(trapV, trapV - 0.4, resV, 0.1, 0.01)
+            ehe.dataCache.note('resV: {}, trapV: {}'.format(resV, trapV))
+        
     ehe.set_alazar_average(average=100)
     ehe.set_ramp_mode(high=3, low=0)
     frequency = ehe.sample.peakF + 0.2e6
@@ -131,4 +131,8 @@ if __name__ == "__main__":
     ehe.lb.set_frequency(frequency)
     ehe.set_ramp_stops(3.2, 0.4, n=1)
     ehe.res.set_Vs(0.4, 3, 0.001)
+    ehe.nwa.scan()
+
+    ehe.set_ramp_stops(3.2, 0.4, n=10)
+    ehe.res.set_Vs(0.4, 3, 0.005)
     ehe.nwa.scan()
