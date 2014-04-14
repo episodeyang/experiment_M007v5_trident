@@ -54,15 +54,16 @@ if __name__ == "__main__":
     print ehe.filename
 
     ehe.note('start experiment. ')
+    ehe.note('quick experiment to seep feature movement')
     ehe.note('set SRS bandwidth to 30kHz')
 
     def na_monit():
         ehe.na.take_one("monit")
 
-    ehe.sample = lambda: None;
+    ehe.sample = lambda: None
     ehe.sample.freqNoE = 8.012e9
     #ehe.sample.peakF = ehe.sample.freqNoE
-    ehe.sample.freqWithE = 8023438335.47;
+    ehe.sample.freqWithE = 8023438335.47
 
     ehe.plotter.clear('na spectrum')
     ehe.plotter.clear('nwa mag')
@@ -115,9 +116,11 @@ if __name__ == "__main__":
         ehe.nwa.sweep()
         
     resV = 0.4
-    set_n_get(3.2, 0.4)
-    
-    for trapV in arange(3.2, 0, 0.4):
+    set_n_get(3.2, 0.4, resV)
+
+    set_n_get(3.2, 0.4, resV)
+
+    for trapV in arange(3.2, 0.2, -0.2):
         set_n_get(trapV, trapV - 0.4, resV)
         ehe.dataCache.note('resV: {}, trapV: {}'.format(resV, trapV))
 
