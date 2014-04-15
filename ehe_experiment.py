@@ -245,6 +245,9 @@ class eHeExperiment():
             self.res.set_volt(resV)
             tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data(excise=(0, -56))  #excise=(0,4992))
 
+            I_half = []
+            Q_half = []
+            
             for ind, high_low in enumerate(zip(self.rampHighs, self.rampLows)):
                 group_prefix = 'ramp_{}.'.format(str(1000+ind)[-3:])
 
@@ -261,20 +264,18 @@ class eHeExperiment():
                 mags = sqrt(ch1_pts**2 + ch2_pts**2)
                 phases = map(util.phase, zip(ch1_pts, ch2_pts))
                 
-                I_stack.append(I)
-                Q_stack.append(Q)
-                mags_stack.append(mags)
-                phases_stack.append(phases)
-                
-                self.plotter.append_z('nwa I', I)
-                self.plotter.append_z('nwa Q', Q)
-                self.plotter.append_z('nwa mag', mags)
-                self.plotter.append_z('nwa phases', phases)
+                I_half.extend(I[:-len(I)/2])
+                Q_half.extend(Q[:-len(Q)/2])
 
                 self.dataCache.post(group_prefix+'I', ch1_pts)
                 self.dataCache.post(group_prefix+'Q', ch2_pts)
                 # self.dataCache.post('mags', mags)
                 # self.dataCache.post('phases', phases)
+
+            I_stack.append(I_half)
+            Q_stack.append(Q_half)
+            self.plotter.append_z('nwa I', I_half)
+            self.plotter.append_z('nwa Q', Q_half)
 
         self.plotter.plot_z('nwa I', I_stack, extent=[high, 2*low-high, self.resVs[0], self.resVs[1])
         self.plotter.plot_z('nwa Q', Q_stack, extent=[high, 2*low-high, self.resVs[0], self.resVs[1])
