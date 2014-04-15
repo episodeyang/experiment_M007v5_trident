@@ -236,6 +236,11 @@ class eHeExperiment():
 
         tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data()
 
+        I_stack = []
+        Q_stack = []
+        mags_stack = []
+        phases_stack = []
+
         for resV in self.resVs:
             self.res.set_volt(resV)
             tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data(excise=(0, -56))  #excise=(0,4992))
@@ -255,17 +260,26 @@ class eHeExperiment():
 
                 mags = sqrt(ch1_pts**2 + ch2_pts**2)
                 phases = map(util.phase, zip(ch1_pts, ch2_pts))
+                
+                I_stack.append(I)
+                Q_stack.append(Q)
+                mags_stack.append(mags)
+                phases_stack.append(phases)
+                
+                self.plotter.append_z('nwa I', I)
+                self.plotter.append_z('nwa Q', Q)
+                self.plotter.append_z('nwa mag', mags)
+                self.plotter.append_z('nwa phases', phases)
 
-                if ind == 0:
-                    self.plotter.append_z('nwa mag', mags)
-                    self.plotter.append_z('nwa phase', phases)
-                    self.plotter.append_z('nwa I', ch1_pts)
-                    self.plotter.append_z('nwa Q', ch2_pts)
-
-                # self.dataCache.post('mags', mags)
-                # self.dataCache.post('phases', phases)
                 self.dataCache.post(group_prefix+'I', ch1_pts)
                 self.dataCache.post(group_prefix+'Q', ch2_pts)
+                # self.dataCache.post('mags', mags)
+                # self.dataCache.post('phases', phases)
+
+        self.plotter.plot_z('nwa I', I_stack, extent=[high, 2*low-high, self.resVs[0], self.resVs[1])
+        self.plotter.plot_z('nwa Q', Q_stack, extent=[high, 2*low-high, self.resVs[0], self.resVs[1])
+        self.plotter.plot_z('nwa mag', mags_stack, extent=[high, 2*low-high, self.resVs[0], self.resVs[1])
+        self.plotter.plot_z('nwa phase', phases_stack, extent=[high, 2*low-high, self.resVs[0], self.resVs[1])
 
     def set_alazar_average(self, average=1):
         self.alazar.config.recordsPerBuffer = average
