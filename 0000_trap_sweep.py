@@ -79,33 +79,41 @@ if __name__ == "__main__":
     sleep(10)
     ehe.get_peak()
     ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=10e6)
-    
-    def set_n_get(high, low, resV = 0.8):
+
+    def set_n_get(high, low, resV=None, step_coarse=0.05, step_fine=.001):
+        if resV == None:
+            try:
+                resV = ehe.res.get_volt()
+            except:
+                # just need to try again buddy!
+                resV = ehe.res.get_volt()
+
         ehe.set_DC_mode()
         print "now sleep 2 seconds"
         sleep(2)
+
         ehe.get_peak()
         ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=10e6)
         ehe.clear_na_plotter()
-        ehe.set_volt_sweep(high, low, 0.05, resV, resV, 0.05, doublePass=True)
+        ehe.set_volt_sweep(high, low, step_coarse, resV, resV, 0.05, doublePass=True)
         ehe.get_na_sweep_voltage(ehe.sample.peakF, 2e6)
-    
+
         ehe.clear_na_plotter()
-        ehe.set_volt_sweep(high, low, 0.001, resV, resV, 0.05, doublePass=True)
+        ehe.set_volt_sweep(high, low, step_fine, resV, resV, 0.05, doublePass=True)
         ehe.get_na_sweep_voltage(ehe.sample.peakF, 2e6)
-    
+
         ehe.set_ramp_mode(high=high, low=low)
         ehe.trap.trigger()
         ehe.clear_nwa_plotter()
         ehe.set_alazar_average(average=1)
         ehe.nwa.config.range = [ehe.sample.peakF - 1e6, ehe.sample.peakF + 1e6, 320]
         ehe.nwa.sweep()
-    
+
         ehe.clear_nwa_plotter()
         ehe.set_alazar_average(average=100)
         ehe.nwa.config.range = [ehe.sample.peakF - 1e6, ehe.sample.peakF + 1e6, 80]
         ehe.nwa.sweep()
-        
+
     for resV in arange(3.2, 0.4,-0.4):
         for trapV in arange(3.4, 0.2, -0.4):
             set_n_get(trapV+0.4, trapV, resV)

@@ -2,7 +2,7 @@
 """
 Created on Mon Feb 06 22:13:59 2012
 
-@author: Phil
+@author: Ge Yang
 """
 
 import math
@@ -65,11 +65,9 @@ if __name__ == "__main__":
     #ehe.sample.peakF = ehe.sample.freqNoE
     ehe.sample.freqWithE = 8023438335.47
 
-    ehe.plotter.clear('na spectrum')
-    ehe.plotter.clear('nwa mag')
-    ehe.plotter.clear('nwa phase')
-    ehe.plotter.clear('nwa I')
-    ehe.plotter.clear('nwa Q')
+
+    ehe.clear_na_plotter()
+    ehe.clear_nwa_plotter()
 
     ehe.trap.setup_volt_source(None, 3.5, 0, 'on')
     ehe.set_DC_mode()
@@ -77,12 +75,12 @@ if __name__ == "__main__":
     ehe.set_DC_mode()
     
     ehe.get_peak()
-    # print 'now sleep 10 senconds'
-    # sleep(10)
+    print 'now sleep 1 sencond'
+    sleep(1)
     ehe.get_peak()
     ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=10e6)
 
-    def set_n_get(high, low, resV=None, step_coarse=0.05, step_fine=.001):
+    def set_n_get(high, low, resV=None, step_coarse=0.05, step_fine=.001, take_non_averaged=True):
         if resV == None:
             try:
                 resV = ehe.res.get_volt()
@@ -91,48 +89,56 @@ if __name__ == "__main__":
                 resV = ehe.res.get_volt()
 
         ehe.set_DC_mode()
-        print "now sleep 2 seconds"
-        sleep(2)
-        
+
         ehe.get_peak()
         ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=10e6)
-        ehe.clear_na_plotter()
-        ehe.set_volt_sweep(high, low, step_coarse, resV, resV, 0.05, doublePass=True)
-        ehe.get_na_sweep_voltage(ehe.sample.peakF, 2e6)
+        if step_coarse != None:
+            ehe.clear_na_plotter()
+            ehe.set_volt_sweep(high, low, step_coarse, resV, resV, 0.05, doublePass=True)
+            ehe.get_na_sweep_voltage(ehe.sample.peakF, 2e6)
 
-        ehe.clear_na_plotter()
-        ehe.set_volt_sweep(high, low, step_fine, resV, resV, 0.05, doublePass=True)
-        ehe.get_na_sweep_voltage(ehe.sample.peakF, 2e6)
+        if step_fine != None:
+            ehe.clear_na_plotter()
+            ehe.set_volt_sweep(high, low, step_fine, resV, resV, 0.05, doublePass=True)
+            ehe.get_na_sweep_voltage(ehe.sample.peakF, 2e6)
 
         ehe.set_ramp_mode(high=high, low=low)
+        print "now sleep 0.4 seconds"
+        sleep(0.4)
         ehe.trap.trigger()
         ehe.clear_nwa_plotter()
-        ehe.set_alazar_average(average=1)
-        ehe.nwa.config.range = [ehe.sample.peakF - 1e6, ehe.sample.peakF + 1e6, 320]
-        ehe.nwa.sweep()
+
+        if take_non_averaged:
+            ehe.set_alazar_average(average=1)
+            ehe.nwa.config.range = [ehe.sample.peakF - 1e6, ehe.sample.peakF + 1e6, 320]
+            ehe.nwa.sweep()
 
         ehe.clear_nwa_plotter()
         ehe.set_alazar_average(average=100)
         ehe.nwa.config.range = [ehe.sample.peakF - 1e6, ehe.sample.peakF + 1e6, 80]
         ehe.nwa.sweep()
-        
-    resV = 0.4
-    set_n_get(3.2, 0.4, resV, 0.5, 0.05)
-    
-    for resV in arange(0.4, 3.2, 0.1):
-        for trapV in arange(3.2, 0, -0.4):
-            set_n_get(trapV, trapV - 0.4, resV, 0.1, 0.01)
-            ehe.dataCache.note('resV: {}, trapV: {}'.format(resV, trapV))
-        
-    ehe.set_alazar_average(average=100)
-    ehe.set_ramp_mode(high=3, low=0)
-    frequency = ehe.sample.peakF + 0.2e6
-    ehe.dataCache.note('probe frequency is set at {:.9f}'.format(frequency/1e9))
-    ehe.lb.set_frequency(frequency)
-    ehe.set_ramp_stops(3.2, 0.4, n=1)
-    ehe.res.set_Vs(0.4, 3, 0.001)
-    ehe.nwa.scan()
 
-    ehe.set_ramp_stops(3.2, 0.4, n=10)
-    ehe.res.set_Vs(0.4, 3, 0.005)
-    ehe.nwa.scan()
+
+    for resV in arange(3.0, 0.4, -0.05):
+        set_n_get(3.2, 0.4, resV, step_coarse=0.1, step_fine=0.01)
+
+        set_n_get(3.2, 2.8, resV, step_coarse=None, step_fine=0.005, take_non_averaged=False)
+        set_n_get(2.8, 2.4, resV, step_coarse=None, step_fine=0.005, take_non_averaged=False)
+        set_n_get(2.4, 2.0, resV, step_coarse=None, step_fine=0.005, take_non_averaged=False)
+        set_n_get(2.0, 1.6, resV, step_coarse=None, step_fine=0.005, take_non_averaged=False)
+        set_n_get(1.6, 1.2, resV, step_coarse=None, step_fine=0.005, take_non_averaged=False)
+        set_n_get(1.2, 0.8, resV, step_coarse=None, step_fine=0.005, take_non_averaged=False)
+        set_n_get(0.8, 0.4, resV, step_coarse=None, step_fine=0.005, take_non_averaged=False)
+
+        if resV in [0.4, 0.8, 1.2, 1.6, 1.8]:
+            ehe.set_alazar_average(average=100)
+            ehe.set_ramp_mode(high=3, low=0)
+            frequency = ehe.sample.peakF
+            ehe.lb.set_frequency(frequency)
+            ehe.res.set_Vs(resV, 3, 0.01)
+            ehe.set_ramp_stops(3.0, 0.4, n=1)
+            ehe.nwa.scan()
+            ehe.dataCache.note('probe frequency is set at {:.9f}'.format(frequency/1e9))
+            ehe.set_ramp_stops(3.0, 0.4, n=5)
+            ehe.nwa.scan()
+            ehe.dataCache.note('probe frequency is set at {:.9f}'.format(frequency/1e9))

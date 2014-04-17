@@ -264,8 +264,8 @@ class eHeExperiment():
                 mags = sqrt(ch1_pts**2 + ch2_pts**2)
                 phases = map(util.phase, zip(ch1_pts, ch2_pts))
                 
-                I_half.extend(I[:-len(I)/2])
-                Q_half.extend(Q[:-len(Q)/2])
+                I_half.extend(ch1_pts[:-len(ch1_pts)/2])
+                Q_half.extend(ch2_pts[:-len(ch2_pts)/2])
 
                 self.dataCache.post(group_prefix+'I', ch1_pts)
                 self.dataCache.post(group_prefix+'Q', ch2_pts)
@@ -277,10 +277,13 @@ class eHeExperiment():
             self.plotter.append_z('nwa I', I_half)
             self.plotter.append_z('nwa Q', Q_half)
 
-        self.plotter.plot_z('nwa I', I_stack, extent=[high, 2*low-high, self.resVs[0], self.resVs[1])
-        self.plotter.plot_z('nwa Q', Q_stack, extent=[high, 2*low-high, self.resVs[0], self.resVs[1])
-        self.plotter.plot_z('nwa mag', mags_stack, extent=[high, 2*low-high, self.resVs[0], self.resVs[1])
-        self.plotter.plot_z('nwa phase', phases_stack, extent=[high, 2*low-high, self.resVs[0], self.resVs[1])
+        extent = [  [self.rampHighs[0], 2*self.rampLows[-1]-self.rampHighs[0]], 
+                    [self.resVs[0], self.resVs[-1]]
+                    ]
+        self.plotter.plot_z('nwa I', I_stack, extent=extent)
+        self.plotter.plot_z('nwa Q', Q_stack, extent=extent)
+        # self.plotter.plot_z('nwa mag', mags_stack, extent=extent)
+        # self.plotter.plot_z('nwa phase', phases_stack, extent=extent)
 
     def set_alazar_average(self, average=1):
         self.alazar.config.recordsPerBuffer = average
