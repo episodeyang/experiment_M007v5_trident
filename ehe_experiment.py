@@ -2,7 +2,7 @@
 """
 Created on Mon Feb 06 22:13:59 2012
 
-@author: Phil
+@author: Ge
 """
 
 import math
@@ -23,6 +23,9 @@ import pstats
 import util as util
 from data_cache import dataCacheProxy
 
+import os
+import winsound
+
 class eHeExperiment():
     def attach_instruments(self):
         self.im = InstrumentManager()
@@ -34,11 +37,12 @@ class eHeExperiment():
         #self.res = self.im['res']
         #self.trap = self.im['trap']
         #self.lb1 = self.im['LB1']
-        self.lb = self.im['labbrick']
-        #self.bnc = self.im['BNC']
+        # self.lb = self.im['labbrick']
+        self.rf = self.im['BNC845_RF']
         self.trap = self.im['BNC_trap']
         self.trigger = self.im['BNC_sync']
         self.alazar = Alazar()
+        self.sa = self.im.sa
 
     def __init__(self, expt_path=None, prefix=None, alazarConfig=None, fridgeParams=None, filamentParams=None, newDataFile=False):
         if expt_path != None and prefix!=None:
@@ -61,10 +65,10 @@ class eHeExperiment():
 
             self.fridge.params = fridgeParams
 
-            #        self.lb.set_output(False)
-            self.lb.set_pulse_ext(False)
-            self.lb.set_mod(False)
-            self.lb.set_power(0)
+            # # self.lb.set_output(False)
+            # self.lb.set_pulse_ext(False)
+            # self.lb.set_mod(False)
+            # self.lb.set_power(0)
 
             self.alazar.configure(AlazarConfig(alazarConfig))
             # self.alazarConfig = alazarConfig
@@ -124,7 +128,7 @@ class eHeExperiment():
 
     def set_DC_mode(self):
         self.na.set_output('on')
-        self.lb.set_output(False)
+        self.rf.set_output(False)
         self.trap.setup_volt_source(None, 3.5, 0, 'on')
 
     def set_ramp_mode(self, high=None, low=None, offset=None, amp=None):
@@ -388,14 +392,23 @@ class eHeExperiment():
         self.note("sweep probe frequency and trap electrode")
 
     def get_peak(self, nwa_center=None, nwa_span=30e6, set_nwa=True):
+        na_rf_state = self.na.get_output()
+        self.na.set_output(True)
+        rf_output = self.rf.get_output()
+        self.rf.set_output(False)
         if set_nwa:
             self.na.set_sweep_points(320)
             if nwa_center == None:
-                nwa_center = self.sample.freqNoE;
+                nwa_center = self.sample.freqNoE - nwa_span/3.;
             self.na.set_center_frequency(nwa_center)
             self.na.set_span(nwa_span)
         fpts, mags, phases = self.na.take_one()
-        self.sample.peakF = fpts[argmax(mags)]
+        arg= argmax(mags)
+        maxMag = mags[arg]
+        self.sample.peakF = fpts[arg]
+        self.note("peakF: {}, mag @ {}, arg @ {}".format(self.sample.peakF, maxMag, arg))
+        self.na.set_output(na_rf_state)
+        self.rf.set_output(rf_output)
         print "the peak is found at: ", self.sample.peakF
         return fpts, mags, phases
 
@@ -414,6 +427,20 @@ class eHeExperiment():
         self.plotter.clear('nwa phase')
         self.plotter.clear('nwa I')
         self.plotter.clear('nwa Q')
+
+    def play_sound(self, tone=None, filename=None):
+        sound_file_directory = r'tone_files'
+        tone_dict = {100: '100', 250: '250', 440: '440', 1000: '1k', 10000: '10k'}
+        if filename == None:
+            filename = '{}Hz_44100Hz_16bit_05sec.wav'.format(tone_dict[tone])
+        path = os.path.join(sound_file_directory, filename)
+        winsound.PlaySound(path, winsound.SND_FILENAME|winsound.SND_ASYNC|winsound.SND_LOOP)
+
+    def stop_sound(self):
+        sound_file_directory = r'tone_files'
+        filename = 'Silent.wav'
+        path = os.path.join(sound_file_directory, filename)
+        winsound.PlaySound(path, winsound.SND_FILENAME|winsound.SND_ASYNC)
 
 if __name__ == "__main__":
     print "main just ran but nothing is here."
