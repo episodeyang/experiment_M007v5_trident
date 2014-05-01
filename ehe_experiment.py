@@ -26,6 +26,7 @@ from data_cache import dataCacheProxy
 import os
 import winsound
 
+
 class eHeExperiment():
     def attach_instruments(self):
         self.im = InstrumentManager()
@@ -38,14 +39,16 @@ class eHeExperiment():
         #self.trap = self.im['trap']
         #self.lb1 = self.im['LB1']
         # self.lb = self.im['labbrick']
-        self.rf = self.im['BNC845_RF']
+        self.rf = self.im['BNC845_RF_0']  # the rf probe tone
+        self.lo = self.im['BNC845_RF_1']  # the local oscillator
         self.trap = self.im['BNC_trap']
         self.trigger = self.im['BNC_sync']
         self.alazar = Alazar()
         self.sa = self.im.sa
 
-    def __init__(self, expt_path=None, prefix=None, alazarConfig=None, fridgeParams=None, filamentParams=None, newDataFile=False):
-        if expt_path != None and prefix!=None:
+    def __init__(self, expt_path=None, prefix=None, alazarConfig=None, fridgeParams=None, filamentParams=None,
+                 newDataFile=False):
+        if expt_path != None and prefix != None:
             self.expt_path = expt_path
             self.prefix = prefix
 
@@ -62,6 +65,7 @@ class eHeExperiment():
             # self.na.set_default_state()
             # self.na.params = naParams
             # self.na.update = self.updateNWA
+            self.na.set_trigger_source('bus')
 
             self.fridge.params = fridgeParams
 
@@ -128,12 +132,18 @@ class eHeExperiment():
 
     def set_DC_mode(self):
         self.na.set_output('on')
+        self.na.set_trigger_source('bus')
+        rf_output = self.rf.get_output()
         self.rf.set_output(False)
+        lo_output = self.rf.get_output()
+        self.lo.set_output(False)
         self.trap.setup_volt_source(None, 3.5, 0, 'on')
 
     def set_ramp_mode(self, high=None, low=None, offset=None, amp=None):
         self.set_ramp(high, low, offset, amp)
-        self.lb.set_output(True)
+        self.rf.set_output(True)
+        self.lo.set_output(True)
+
         self.trap.set_burst_phase(90)
         self.trap.set_function('ramp')
         self.trap.set_burst_state('on')
@@ -145,8 +155,8 @@ class eHeExperiment():
         high and low overrides amp and offset.
         """
         if low != None and high != None:
-            amp = abs(high-low)
-            offset = max(high, low) - amp/2.
+            amp = abs(high - low)
+            offset = max(high, low) - amp / 2.
         if amp != None:
             self.trap.set_amplitude(amp)
         if offset != None:
@@ -155,10 +165,9 @@ class eHeExperiment():
     def get_trap_high_low(self):
         offset = self.trap.get_offset()
         amp = self.trap.get_amplitude()
-        return offset + amp/2.0, offset - amp/2.0
+        return offset + amp / 2.0, offset - amp / 2.0
 
     def nwa_sweep(self, fpts=None, config=None):
-
         if fpts == None:
             self.nwa.config.fpts = linspace(self.nwa.config.range[0], self.nwa.config.range[1],
                                             self.nwa.config.range[2])
@@ -184,17 +193,16 @@ class eHeExperiment():
         start, end, n = self.nwa.config.range
         self.dataCache.set('fStart', start)
         self.dataCache.set('fEnd', end)
-        self.dataCache.set('fN', n)        
+        self.dataCache.set('fN', n)
         self.dataCache.note('start freq: {}, end freq: {}, number of points: {}'.format(start, end, n));
-        
-        tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data()
+
         for f in self.nwa.config.fpts:
-            self.lb.set_frequency(float(f))
+            self.rf.set_frequency(float(f))
             tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data(excise=(0, -56))  #excise=(0,4992))
 
             # ch1_avg = mean(ch1_pts)
             # ch2_avg = mean(ch2_pts)
-            mags = sqrt(ch1_pts**2 + ch2_pts**2)
+            mags = sqrt(ch1_pts ** 2 + ch2_pts ** 2)
             phases = map(util.phase, zip(ch1_pts, ch2_pts))
 
             self.plotter.append_z('nwa mag', mags)
@@ -207,6 +215,64 @@ class eHeExperiment():
             self.dataCache.post('I', ch1_pts)
             self.dataCache.post('Q', ch2_pts)
         return mags
+
+    def heterodyne_spectrum(self, fpts=None, config=None):
+        if fpts == None:
+            self.nwa.config.fpts = linspace(self.nwa.config.range[0], self.nwa.config.range[1],
+                                            self.nwa.config.range[2])
+        else:
+            self.nwa.config.fpts = fpts;
+
+        if self.alazar.config != config and config != None:
+            print "new configuration file"
+            self.alazar.config = AlazarConfig(config);
+            print "config file has to pass through the AlazarConfig middleware."
+            self.alazar.configure()
+
+        self.dataCache.new_stack()
+        self.dataCache.note('heterodyne_spectrum', keyString='type')
+        self.dataCache.note(util.get_date_time_string(), keyString='startTime')
+        high, low = self.get_trap_high_low()
+        self.dataCache.set('rampHigh', high)
+        self.dataCache.set('rampLow', low)
+        self.dataCache.set('resV', self.res.get_volt())
+        self.dataCache.note('ramp high: {}, low: {}'.format(high, low))
+        self.dataCache.note('averaging(recordsPerBuffer): {}'.format(self.alazar.config.recordsPerBuffer))
+        self.dataCache.set('fpts', self.nwa.config.fpts)
+        start, end, n = self.nwa.config.range
+        self.dataCache.set('fStart', start)
+        self.dataCache.set('fEnd', end)
+        self.dataCache.set('fN', n)
+        self.dataCache.note('start freq: {}, end freq: {}, number of points: {}'.format(start, end, n));
+
+        self.rf.set_frequency(self.nwa.config.fpts[0])
+        self.lo.set_frequency(self.nwa.config.fpts[0] + self.offsetF)
+
+        ampI = []
+        ampQ = []
+        for f in self.nwa.config.fpts[1:]:
+            tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data(excise=(0, -56))  #excise=(0,4992))
+
+            # place the setting here to allow time for the rf sources to stablize.
+            self.rf.set_frequency(f)
+            self.lo.set_frequency(f + self.offsetF)
+
+            dtpts, amp1, amp2 = dataanalysis.fast_digital_homodyne(tpts, ch1_pts, ch2_pts, IFfreq=self.offsetF, AmpPhase=True)
+            self.plotter.append_z('amp', amp1)
+            self.dataCache.post('amp I', amp1)
+            self.dataCache.post('amp Q', amp2)
+            ampI.append([amp1])
+            ampQ.append([amp2])
+            # self.plotter.append_z('phase', phase1)
+            # self.dataCache.post('phase', phase1)
+
+            # self.plotter.append_z('ch1', ch1_pts)
+            # self.plotter.append_z('ch2', ch2_pts)
+
+            # self.dataCache.post('ch1', ch1_pts)
+            # self.dataCache.post('ch2', ch2_pts)
+
+        return concatenate(ampI),concatenate(ampQ) #, phase1 #ch1_pts, ch2_pts
 
     def res_set_Vs(self, resStart, resStop, resStep=None, n=None):
         if resStep == None:
@@ -251,28 +317,28 @@ class eHeExperiment():
 
             I_half = []
             Q_half = []
-            
-            for ind, high_low in enumerate(zip(self.rampHighs, self.rampLows)):
-                group_prefix = 'ramp_{}.'.format(str(1000+ind)[-3:])
 
-                self.dataCache.post(group_prefix+'resVs', resV)
+            for ind, high_low in enumerate(zip(self.rampHighs, self.rampLows)):
+                group_prefix = 'ramp_{}.'.format(str(1000 + ind)[-3:])
+
+                self.dataCache.post(group_prefix + 'resVs', resV)
 
                 high, low = high_low;
                 self.set_ramp(high=high, low=low)
-                self.dataCache.post(group_prefix+'rampHighs', high)
-                self.dataCache.post(group_prefix+'rampLows', low)
-                self.dataCache.note(group_prefix+'ramp high: {}, low: {}'.format(high, low))
+                self.dataCache.post(group_prefix + 'rampHighs', high)
+                self.dataCache.post(group_prefix + 'rampLows', low)
+                self.dataCache.note(group_prefix + 'ramp high: {}, low: {}'.format(high, low))
 
                 tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data(excise=(0, -56))  #excise=(0,4992))
 
-                mags = sqrt(ch1_pts**2 + ch2_pts**2)
+                mags = sqrt(ch1_pts ** 2 + ch2_pts ** 2)
                 phases = map(util.phase, zip(ch1_pts, ch2_pts))
-                
-                I_half.extend(ch1_pts[:-len(ch1_pts)/2])
-                Q_half.extend(ch2_pts[:-len(ch2_pts)/2])
 
-                self.dataCache.post(group_prefix+'I', ch1_pts)
-                self.dataCache.post(group_prefix+'Q', ch2_pts)
+                I_half.extend(ch1_pts[:-len(ch1_pts) / 2])
+                Q_half.extend(ch2_pts[:-len(ch2_pts) / 2])
+
+                self.dataCache.post(group_prefix + 'I', ch1_pts)
+                self.dataCache.post(group_prefix + 'Q', ch2_pts)
                 # self.dataCache.post('mags', mags)
                 # self.dataCache.post('phases', phases)
 
@@ -281,9 +347,9 @@ class eHeExperiment():
             self.plotter.append_z('nwa I', I_half)
             self.plotter.append_z('nwa Q', Q_half)
 
-        extent = [  [self.rampHighs[0], 2*self.rampLows[-1]-self.rampHighs[0]], 
-                    [self.resVs[0], self.resVs[-1]]
-                    ]
+        extent = [[self.rampHighs[0], 2 * self.rampLows[-1] - self.rampHighs[0]],
+                  [self.resVs[0], self.resVs[-1]]
+        ]
         self.plotter.plot_z('nwa I', I_stack, extent=extent)
         self.plotter.plot_z('nwa Q', Q_stack, extent=extent)
         # self.plotter.plot_z('nwa mag', mags_stack, extent=extent)
@@ -292,8 +358,8 @@ class eHeExperiment():
     def set_alazar_average(self, average=1):
         self.alazar.config.recordsPerBuffer = average
         self.alazar.config.recordsPerAcquisition = average
-        self.alazar.config.timeout = 1000*average
-        self.alazar.configure()#self.alazar.config)
+        self.alazar.config.timeout = 1000 * average
+        self.alazar.configure()  #self.alazar.config)
         # self.alazarConfig['recordsPerBuffer'] = average
         # self.alazarConfig['recordsPerAcquisition'] = average
         # self.alazar.configure(AlazarConfig(self.alazarConfig))
@@ -339,7 +405,7 @@ class eHeExperiment():
         self.dataCache.set('resEnd', resEnd)
         self.dataCache.set('resStep', resStep)
         self.dataCache.set('doublePass', str(doublePass))
-        
+
         fpts, mag, phase = self.na.take_one(plotName=plotName)
         self.dataCache.set('fpts', fpts)
         for trapV, resV in zip(self.trapVs, self.resVs):
@@ -392,23 +458,27 @@ class eHeExperiment():
         self.note("sweep probe frequency and trap electrode")
 
     def get_peak(self, nwa_center=None, nwa_span=30e6, set_nwa=True):
+        self.na.set_trigger_source('bus')
         na_rf_state = self.na.get_output()
         self.na.set_output(True)
         rf_output = self.rf.get_output()
         self.rf.set_output(False)
+        lo_output = self.rf.get_output()
+        self.lo.set_output(False)
         if set_nwa:
             self.na.set_sweep_points(320)
             if nwa_center == None:
-                nwa_center = self.sample.freqNoE - nwa_span/3.;
+                nwa_center = self.sample.freqNoE - nwa_span / 3.;
             self.na.set_center_frequency(nwa_center)
             self.na.set_span(nwa_span)
         fpts, mags, phases = self.na.take_one()
-        arg= argmax(mags)
+        arg = argmax(mags)
         maxMag = mags[arg]
         self.sample.peakF = fpts[arg]
         self.note("peakF: {}, mag @ {}, arg @ {}".format(self.sample.peakF, maxMag, arg))
         self.na.set_output(na_rf_state)
         self.rf.set_output(rf_output)
+        self.rf.set_output(lo_output)
         print "the peak is found at: ", self.sample.peakF
         return fpts, mags, phases
 
@@ -434,13 +504,51 @@ class eHeExperiment():
         if filename == None:
             filename = '{}Hz_44100Hz_16bit_05sec.wav'.format(tone_dict[tone])
         path = os.path.join(sound_file_directory, filename)
-        winsound.PlaySound(path, winsound.SND_FILENAME|winsound.SND_ASYNC|winsound.SND_LOOP)
+        winsound.PlaySound(path, winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_LOOP)
 
     def stop_sound(self):
         sound_file_directory = r'tone_files'
         filename = 'Silent.wav'
         path = os.path.join(sound_file_directory, filename)
-        winsound.PlaySound(path, winsound.SND_FILENAME|winsound.SND_ASYNC)
+        winsound.PlaySound(path, winsound.SND_FILENAME | winsound.SND_ASYNC)
+
+    def take_spectrum(self, center=None, span=None, resbw=None):
+        self.na.set_output(False)
+        self.rf.set_output(True)
+        if center == None: center = self.sample.peakF
+        self.rf.set_frequency(center)
+        self.sa.set_center_frequency(center)
+        if span != None: self.sa.set_span(span)
+        if resbw != None:
+            self.sa.set_resbw(resbw)
+        else:
+            self.sa.set_resbw(self.sa.get_span()/float(self.sa.get_sweep_points())*2)
+        self.sa.trigger_single();
+
+    def save_spectrum(self, notes=None):
+        fpts , mags = self.sa.take_one() #self.sa.read_data() #
+        self.dataCache.new_stack()
+        self.dataCache.set('fpts', fpts)
+        self.dataCache.set('mags', mags)
+
+        span = self.sa.get_span()
+        sweep_pts = self.sa.get_sweep_points()
+        resbw = self.sa.get_resbw()
+        self.dataCache.set('span', span)
+        self.dataCache.set('sweep_pts', sweep_pts)
+        self.dataCache.set('resbw', resbw)
+
+        self.dataCache.note(notes)
+        self.dataCache.set('temperature', self.fridge.get_temperature())
+
+    def take_spectrum_group(self, note):
+        self.take_spectrum(span=20000)
+        self.save_spectrum(note)
+        self.take_spectrum(span=2000)
+        self.save_spectrum(note)
+        self.take_spectrum(span=200)
+        self.save_spectrum(note)
+
 
 if __name__ == "__main__":
     print "main just ran but nothing is here."

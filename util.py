@@ -71,3 +71,9 @@ def phase(pair):
     else:
         theta = pi / 2;
     return theta
+
+def amps(img1, img2):
+    return map(amp, zip(img1, img2))
+
+def phases(img1, img2):
+    return map(phase, zip(img1, img2))

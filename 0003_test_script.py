@@ -83,8 +83,6 @@ if __name__ == "__main__":
     ehe.rf.set_output(True)
     ehe.rf.set_frequency(ehe.sample.peakF)    
 
-    
-#
 #    def set_n_get(high, low, resV=None, step_coarse=0.05, step_fine=.001, take_non_averaged=True):
 #        if resV == None:
 #            try:

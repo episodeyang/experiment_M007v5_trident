@@ -25,14 +25,15 @@ class dataCacheProxy():
             self.data_directory = expInst.expt_path
             self.prefix = expInst.prefix
             self.set_data_file_path(newFile)
-            self.current_stack = ''
-            self.stack_prefix = stack_prefix
-            # self.currentStack = lambda:None;
-            # self.currentStack.note = self.note
-            # self.currentStack.set = self.set
-            # self.currentStack.post = self.post
         else:
             self.path = filepath
+
+        self.current_stack = ''
+        self.stack_prefix = stack_prefix
+        # self.currentStack = lambda:None;
+        # self.currentStack.note = self.note
+        # self.currentStack.set = self.set
+        # self.currentStack.post = self.post
 
     def set_data_file_path(self, newFile=False):
         try:
@@ -81,6 +82,7 @@ class dataCacheProxy():
 
         try:
             if self.current_stack != '':
+                if self.current_stack[-1] == '.': self.current_stack = self.current_stack[:-1]
                 route = self.current_stack + "." + route
         except AttributeError:
             pass
@@ -92,12 +94,13 @@ class dataCacheProxy():
         """
         try:
             if self.current_stack != '':
+                if self.current_stack[-1] == '.': self.current_stack = self.current_stack[:-1]
                 route = self.current_stack + "." + route
         except AttributeError:
             pass
         self.add(route, data)
 
-    def get(self, keyString):
+    def find(self, keyString):
         def get_data(f, keyList):
             if len(keyList) == 1:
                 return f[keyList[0]][...];
@@ -107,6 +110,24 @@ class dataCacheProxy():
         keyList = keyString.split('.')
         with SlabFile(self.path, 'r') as f:
             return get_data(f, keyList)
+
+    def get(self, route):
+        """
+        get a dataset from the current data stack.
+        """
+        try:
+            if self.current_stack != '':
+                if self.current_stack[-1] == '.': self.current_stack = self.current_stack[:-1]
+                route = self.current_stack + '.' + route
+        except AttributeError:
+            pass
+        return self.find(route)
+
+    def next_stack(self):
+        try: index = int(self.current_stack[-5:]) + 1
+        except: index = 0
+        self.current_stack = self.stack_prefix + str(100000 + index)[1:]
+        return index
 
     def index(self, keyString=''):
         def get_indices(f, keyList):
@@ -126,11 +147,9 @@ class dataCacheProxy():
         keyList = keyString.split('.')
         with SlabFile(self.path, 'r') as f:
             return get_indices(f, keyList)
-    
+        
     def new_stack(self):
-        try: index = int(self.current_stack[-5:]) + 1
-        except: index = 0
-        self.current_stack = self.stack_prefix + str(100000 + index)[1:]
+        index = self.next_stack()
         with SlabFile(self.path) as f:
             try:
                 f.create_group(self.current_stack)
