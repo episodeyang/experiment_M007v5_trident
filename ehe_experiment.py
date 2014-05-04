@@ -257,6 +257,9 @@ class eHeExperiment():
             self.rf.set_frequency(f)
             self.lo.set_frequency(f + self.offsetF)
 
+            # time.sleep(0.1)
+            # print 'sleeping for 0.1 second'
+
             dtpts, amp1, amp2 = dataanalysis.fast_digital_homodyne(tpts, ch1_pts, ch2_pts, IFfreq=self.offsetF, AmpPhase=True)
             self.plotter.append_z('amp', amp1)
             self.dataCache.post('amp I', amp1)

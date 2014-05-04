@@ -84,11 +84,14 @@ if __name__ == "__main__":
 
     # ehe.take_spectrum_group('no electron')
 
-    allowed = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4]
-    while len(allowed) > 1:
-        if ehe.fridge.get_temperature() <= allowed[-1]:
-            print 'taking data at temperature: {}'.format(allowed.pop(-1))
-            ehe.take_spectrum_group('no electron')
+    print 'taking data at temperature: {}'.format(ehe.fridge.get_temperature())
+    ehe.take_spectrum_group('no turbo pump, no pulse tube')
+
+    # allowed = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4]
+    # while len(allowed) > 1:
+    #     if ehe.fridge.get_temperature() <= allowed[-1]:
+    #         print 'taking data at temperature: {}'.format(allowed.pop(-1))
+    #         ehe.take_spectrum_group('no electron')
 
     # for resV in arange(3.0, 0.0, -0.05):
     #     # set_n_get(3.2, 0.4, resV, step_coarse=0.1, step_fine=0.01)
