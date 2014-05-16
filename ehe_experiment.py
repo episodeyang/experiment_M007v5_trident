@@ -26,6 +26,8 @@ from data_cache import dataCacheProxy
 import os
 import winsound
 
+from scipy.ndimage import filters
+
 
 class eHeExperiment():
     def attach_instruments(self):
@@ -244,9 +246,14 @@ class eHeExperiment():
         self.dataCache.set('fEnd', end)
         self.dataCache.set('fN', n)
         self.dataCache.note('start freq: {}, end freq: {}, number of points: {}'.format(start, end, n));
+        try:
+            temperature = self.fridge.get_temperature()
+        except:
+            temperature = self.fridge.get_temperature()
+        self.dataCache.set('temperature', temperature)
 
         self.rf.set_frequency(self.nwa.config.fpts[0])
-        self.lo.set_frequency(self.nwa.config.fpts[0] + self.offsetF)
+        self.lo.set_frequency(self.nwa.config.fpts[0] + self.IF)
 
         ampI = []
         ampQ = []
@@ -255,12 +262,13 @@ class eHeExperiment():
 
             # place the setting here to allow time for the rf sources to stablize.
             self.rf.set_frequency(f)
-            self.lo.set_frequency(f + self.offsetF)
+            self.lo.set_frequency(f + self.IF)
 
             # time.sleep(0.1)
             # print 'sleeping for 0.1 second'
 
-            dtpts, amp1, amp2 = dataanalysis.fast_digital_homodyne(tpts, ch1_pts, ch2_pts, IFfreq=self.offsetF, AmpPhase=True)
+            dtpts, amp1, amp2 = dataanalysis.fast_digital_homodyne(tpts, ch1_pts, ch2_pts, IFfreq=self.IF,
+                                                                   AmpPhase=True)
             self.plotter.append_z('amp', amp1)
             self.dataCache.post('amp I', amp1)
             self.dataCache.post('amp Q', amp2)
@@ -275,7 +283,64 @@ class eHeExperiment():
             # self.dataCache.post('ch1', ch1_pts)
             # self.dataCache.post('ch2', ch2_pts)
 
-        return concatenate(ampI),concatenate(ampQ) #, phase1 #ch1_pts, ch2_pts
+        return concatenate(ampI), concatenate(ampQ)  #, phase1 #ch1_pts, ch2_pts
+
+    def heterodyne_resV_sweep(self, config=None, trackMode=True):
+
+        if self.alazar.config != config and config != None:
+            print "new configuration file"
+            self.alazar.config = AlazarConfig(config);
+            print "config file has to pass through the AlazarConfig middleware."
+            self.alazar.configure()
+
+        self.dataCache.new_stack()
+        self.dataCache.note('heterodyne_resV_sweep', keyString='type')
+        self.dataCache.note(util.get_date_time_string(), keyString='startTime')
+        high, low = self.get_trap_high_low()
+        self.dataCache.set('rampHigh', high)
+        self.dataCache.set('rampLow', low)
+        self.dataCache.set('resVs', self.resVs)
+        self.dataCache.note('ramp high: {}, low: {}'.format(high, low))
+        self.dataCache.note('averaging(recordsPerBuffer): {}'.format(self.alazar.config.recordsPerBuffer))
+        self.dataCache.set('intermediate_frequency', self.IF)
+        try:
+            temperature = self.fridge.get_temperature()
+        except:
+            temperature = self.fridge.get_temperature()
+        self.dataCache.set('temperature', temperature)
+
+        self.rf.set_frequency(self.sample.peakF + self.offsetF)
+        self.lo.set_frequency(self.sample.peakF + self.offsetF + self.IF)
+
+        ampI = []
+        ampQ = []
+        for resV in self.resVs:
+            self.res.set_volt(resV)
+            print "| {:.4f}".format(resV)
+
+            if trackMode:
+                self.set_DC_mode()
+                self.get_peak(nwa_center=self.sample.peakF, nwa_span=5e6)
+                self.dataCache.post('peakFs', self.sample.peakF)
+                self.set_ramp_mode()
+                centerF = filters.gaussian_filter1d(self.dataCache.get('peakFs'), 6)[-1] + self.offsetF
+                self.rf.set_frequency(centerF)
+                self.lo.set_frequency(centerF + self.IF)
+                self.dataCache.post('RFs', centerF)
+                self.plotter.append_y('RF', centerF)
+                print 'center frequency is {}'.format(centerF)
+                self.plotter.append_y('peakF', self.sample.peakF)
+
+            tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data(excise=(0, -56))  #excise=(0,4992))
+            dtpts, amp1, amp2 = dataanalysis.fast_digital_homodyne(tpts, ch1_pts, ch2_pts, IFfreq=self.IF,
+                                                                   AmpPhase=True)
+            self.plotter.append_z('amp', amp1)
+            self.dataCache.post('amp I', amp1)
+            self.dataCache.post('amp Q', amp2)
+            ampI.append([amp1])
+            ampQ.append([amp2])
+
+        return concatenate(ampI), concatenate(ampQ)  #, phase1 #ch1_pts, ch2_pts
 
     def res_set_Vs(self, resStart, resStop, resStep=None, n=None):
         if resStep == None:
@@ -439,7 +504,7 @@ class eHeExperiment():
             plt.ylim(-0.8, 1.8)
         print "estimated time is %d days %d hr %d minutes." % util.days_hours_minutes(len(self.trapVs))  # *2)
 
-    def rinse_n_fire(self, threshold=None, intCallback=None):
+    def rinse_n_fire(self, threshold=None, intCallback=None, timeout=360):
         self.note("unbias the trap for a second")
         self.res.set_volt(-3)
         self.srs.set_output(1, True)
@@ -453,7 +518,7 @@ class eHeExperiment():
         self.note("Now wait for cooldown while taking traces")
         if threshold == None:
             threshold = 60e-3;
-        while self.fridge.get_mc_temperature() > threshold or (time.time() - self.t0) < 360:
+        while self.fridge.get_mc_temperature() > threshold or (time.time() - self.t0) < timeout:
             print '.',
             if intCallback != None:
                 intCallback();
@@ -475,8 +540,8 @@ class eHeExperiment():
             self.na.set_center_frequency(nwa_center)
             self.na.set_span(nwa_span)
         fpts, mags, phases = self.na.take_one()
-        arg = argmax(mags)
-        maxMag = mags[arg]
+        arg = argmax(filters.gaussian_filter1d(mags, 10))
+        maxMag = filters.gaussian_filter1d(mags, 10)[arg]
         self.sample.peakF = fpts[arg]
         self.note("peakF: {}, mag @ {}, arg @ {}".format(self.sample.peakF, maxMag, arg))
         self.na.set_output(na_rf_state)
@@ -525,11 +590,11 @@ class eHeExperiment():
         if resbw != None:
             self.sa.set_resbw(resbw)
         else:
-            self.sa.set_resbw(self.sa.get_span()/float(self.sa.get_sweep_points())*2)
+            self.sa.set_resbw(self.sa.get_span() / float(self.sa.get_sweep_points()) * 2)
         self.sa.trigger_single();
 
     def save_spectrum(self, notes=None):
-        fpts , mags = self.sa.take_one() #self.sa.read_data() #
+        fpts, mags = self.sa.take_one()  #self.sa.read_data() #
         self.dataCache.new_stack()
         self.dataCache.set('fpts', fpts)
         self.dataCache.set('mags', mags)
