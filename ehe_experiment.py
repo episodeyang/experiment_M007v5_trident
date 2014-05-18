@@ -245,7 +245,8 @@ class eHeExperiment():
         self.dataCache.set('fStart', start)
         self.dataCache.set('fEnd', end)
         self.dataCache.set('fN', n)
-        self.dataCache.note('start freq: {}, end freq: {}, number of points: {}'.format(start, end, n));
+        self.dataCache.set('IF', self.IF)
+        self.dataCache.note('start freq: {}, end freq: {}, number of points: {}'.format(start, end, n))
         try:
             temperature = self.fridge.get_temperature()
         except:
@@ -285,7 +286,7 @@ class eHeExperiment():
 
         return concatenate(ampI), concatenate(ampQ)  #, phase1 #ch1_pts, ch2_pts
 
-    def heterodyne_resV_sweep(self, config=None, trackMode=True):
+    def heterodyne_resV_sweep(self, config=None, trackMode=True, trapTrack=True, trapAmp=1, offsetV=0):
 
         if self.alazar.config != config and config != None:
             print "new configuration file"
@@ -296,13 +297,16 @@ class eHeExperiment():
         self.dataCache.new_stack()
         self.dataCache.note('heterodyne_resV_sweep', keyString='type')
         self.dataCache.note(util.get_date_time_string(), keyString='startTime')
-        high, low = self.get_trap_high_low()
-        self.dataCache.set('rampHigh', high)
-        self.dataCache.set('rampLow', low)
+        if trapTrack == False:
+            high, low = self.get_trap_high_low()
+            self.dataCache.set('rampHigh', high)
+            self.dataCache.set('rampLow', low)
+            self.dataCache.note('ramp high: {}, low: {}'.format(high, low))
+
         self.dataCache.set('resVs', self.resVs)
-        self.dataCache.note('ramp high: {}, low: {}'.format(high, low))
         self.dataCache.note('averaging(recordsPerBuffer): {}'.format(self.alazar.config.recordsPerBuffer))
-        self.dataCache.set('intermediate_frequency', self.IF)
+        self.dataCache.set('IF', self.IF)
+        self.dataCache.set('offset_frequency', self.offsetF)
         try:
             temperature = self.fridge.get_temperature()
         except:
@@ -318,11 +322,19 @@ class eHeExperiment():
             self.res.set_volt(resV)
             print "| {:.4f}".format(resV)
 
+            if trapTrack:
+                self.trap.set_amplitude(trapAmp)
+                self.trap.set_offset(resV + offsetV)
+                high, low = self.get_trap_high_low()
+                self.dataCache.post('rampHighs', high)
+                self.dataCache.post('rampLows', low)
+
             if trackMode:
+                trapHigh, trapLow = self.get_trap_high_low()
                 self.set_DC_mode()
                 self.get_peak(nwa_center=self.sample.peakF, nwa_span=5e6)
                 self.dataCache.post('peakFs', self.sample.peakF)
-                self.set_ramp_mode()
+                self.set_ramp_mode(trapHigh, trapLow)
                 centerF = filters.gaussian_filter1d(self.dataCache.get('peakFs'), 6)[-1] + self.offsetF
                 self.rf.set_frequency(centerF)
                 self.lo.set_frequency(centerF + self.IF)
@@ -331,7 +343,7 @@ class eHeExperiment():
                 print 'center frequency is {}'.format(centerF)
                 self.plotter.append_y('peakF', self.sample.peakF)
 
-            tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data(excise=(0, -56))  #excise=(0,4992))
+            tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data(excise=(0, -24))  #excise=(0,4992))
             dtpts, amp1, amp2 = dataanalysis.fast_digital_homodyne(tpts, ch1_pts, ch2_pts, IFfreq=self.IF,
                                                                    AmpPhase=True)
             self.plotter.append_z('amp', amp1)
@@ -518,7 +530,7 @@ class eHeExperiment():
         self.note("Now wait for cooldown while taking traces")
         if threshold == None:
             threshold = 60e-3;
-        while self.fridge.get_mc_temperature() > threshold or (time.time() - self.t0) < timeout:
+        while self.fridge.get_mc_temperature() >= threshold or (time.time() - self.t0) < timeout:
             print '.',
             if intCallback != None:
                 intCallback();
@@ -536,12 +548,12 @@ class eHeExperiment():
         if set_nwa:
             self.na.set_sweep_points(320)
             if nwa_center == None:
-                nwa_center = self.sample.freqNoE - nwa_span / 3.;
+                nwa_center = self.sample.freqNoE - nwa_span / 3.
             self.na.set_center_frequency(nwa_center)
             self.na.set_span(nwa_span)
         fpts, mags, phases = self.na.take_one()
-        arg = argmax(filters.gaussian_filter1d(mags, 10))
-        maxMag = filters.gaussian_filter1d(mags, 10)[arg]
+        arg = argmax(filters.gaussian_filter1d(mags, 30))
+        maxMag = filters.gaussian_filter1d(mags, 30)[arg]
         self.sample.peakF = fpts[arg]
         self.note("peakF: {}, mag @ {}, arg @ {}".format(self.sample.peakF, maxMag, arg))
         self.na.set_output(na_rf_state)

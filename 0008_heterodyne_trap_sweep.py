@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     alazarConfig = {'clock_edge': 'rising', 'trigger_delay': 0,
                     'ch1_filter': False, 'ch1_enabled': True,
-                    'samplesPerRecord': 49984,
+                    'samplesPerRecord': 49024,
                     'recordsPerBuffer': 200,
                     'recordsPerAcquisition': 20000,
                     # 'samples_per_buffer': 2000064,
@@ -62,7 +62,7 @@ if __name__ == "__main__":
                     'ch2_enabled': True}
     aConfig = util.dict2obj(**alazarConfig)
 
-    ehe = eHeExperiment(expt_path, prefix, alazarConfig, fridgeParams, filamentParams, newDataFile=True)
+    ehe = eHeExperiment(expt_path, prefix, alazarConfig, fridgeParams, filamentParams, newDataFile=False)
     print ehe.filename
 
     ehe.note('start experiment. ')
@@ -83,7 +83,10 @@ if __name__ == "__main__":
     # ehe.trap.setup_volt_source(None, 3.5, 0., 'on')
     ehe.trap.setup_volt_source(None, 1.7, 1.3, 'on')
     ehe.set_DC_mode()
-    # ehe.rinse_n_fire(threshold=.310, intCallback=na_monit, timeout=60)
+
+    ehe.na.set_span(30e6)
+    ehe.na.set_center_frequency(ehe.sample.freqNoE)
+    ehe.rinse_n_fire(threshold=.305, intCallback=na_monit, timeout=60)
 
     ehe.set_DC_mode()
     ehe.get_peak()
@@ -91,15 +94,20 @@ if __name__ == "__main__":
     ehe.na.set_output(False)
     ehe.rf.set_frequency(ehe.sample.peakF)
     ehe.rf.set_output(True)
-    ehe.offsetF = -0.5e6
+    ehe.offsetF = -0.75e6
     ehe.IF = 0.2e6
     ehe.lo.set_frequency(ehe.sample.peakF + ehe.IF)
     ehe.lo.set_output(True)
 
-    ehe.set_ramp_mode(2.0, 1.)
+    # ehe.set_ramp_mode(3.3, 0.0)
+    ehe.set_ramp_mode(2.0, 1.0)
+    ehe.res.set_volt(0.5)
+    ehe.res.set_volt(1.5)
     # time.sleep(1.0)
-    # ehe.nwa.config.range = [ehe.sample.peakF-5e6, ehe.sample.peakF+5e6, 400]
-    # for i in range(100):
-    ehe.set_volt_sweep(1,1,0.1,3.3,0.0,0.01);
-    ampI, ampQ = ehe.heterodyne_resV_sweep(trackMode=True)
+    # ehe.nwa.config.range = [ehe.sample.peakF - 1e6, ehe.sample.peakF + 1e6, 40]
+    # ehe.heterodyne_spectrum()
+    ehe.nwa.config.range = [ehe.sample.peakF - 5e6, ehe.sample.peakF + 5e6, 400]
+    ehe.heterodyne_spectrum()
+    ehe.set_volt_sweep(1, 1, 0.1, 3.3, 0.5, 0.01)
+    ampI, ampQ = ehe.heterodyne_resV_sweep(trackMode=True, trapTrack=False, trapAmp=1, offsetV=0)
 
