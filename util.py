@@ -76,4 +76,5 @@ def amps(img1, img2):
     return map(amp, zip(img1, img2))
 
 def phases(img1, img2):
-    return map(phase, zip(img1, img2))
+    return map(lambda row_stack: map(phase, zip(row_stack[0], row_stack[1])), zip(img1, img2))
+

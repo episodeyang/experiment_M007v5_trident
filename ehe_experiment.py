@@ -141,12 +141,17 @@ class eHeExperiment():
         self.lo.set_output(False)
         self.trap.setup_volt_source(None, 3.5, 0, 'on')
 
-    def set_ramp_mode(self, high=None, low=None, offset=None, amp=None):
+    def set_ramp_mode(self, high=None, low=None, offset=None, amp=None, symmetric=False):
         self.set_ramp(high, low, offset, amp)
         self.rf.set_output(True)
         self.lo.set_output(True)
 
-        self.trap.set_burst_phase(90)
+        if symmetric:
+            self.trap.set_burst_phase(90)
+            self.trap.set_symmetry(50)
+        else:
+            self.trap.set_burst_phase(0)
+            self.trap.set_symmetry(0)
         self.trap.set_function('ramp')
         self.trap.set_burst_state('on')
         self.trap.set_trigger_source('ext')
@@ -270,7 +275,7 @@ class eHeExperiment():
 
             dtpts, amp1, amp2 = dataanalysis.fast_digital_homodyne(tpts, ch1_pts, ch2_pts, IFfreq=self.IF,
                                                                    AmpPhase=True)
-            self.plotter.append_z('amp', amp1)
+            self.plotter.append_z('heterodyne spectrum mag', amp1)
             self.dataCache.post('amp I', amp1)
             self.dataCache.post('amp Q', amp2)
             ampI.append([amp1])
@@ -286,7 +291,8 @@ class eHeExperiment():
 
         return concatenate(ampI), concatenate(ampQ)  #, phase1 #ch1_pts, ch2_pts
 
-    def heterodyne_resV_sweep(self, config=None, trackMode=True, trapTrack=True, trapAmp=1, offsetV=0):
+    def heterodyne_resV_sweep(self, config=None, trackMode=True, trapTrack=True, trapAmp=1, offsetV=0,
+                              trackThreshold=50e3):
 
         if self.alazar.config != config and config != None:
             print "new configuration file"
@@ -302,6 +308,9 @@ class eHeExperiment():
             self.dataCache.set('rampHigh', high)
             self.dataCache.set('rampLow', low)
             self.dataCache.note('ramp high: {}, low: {}'.format(high, low))
+        else:
+            self.get_peak()
+            self.get_peak(nwa_center=self.sample.peakF, nwa_span=2e6)
 
         self.dataCache.set('resVs', self.resVs)
         self.dataCache.note('averaging(recordsPerBuffer): {}'.format(self.alazar.config.recordsPerBuffer))
@@ -318,6 +327,9 @@ class eHeExperiment():
 
         ampI = []
         ampQ = []
+        ds = []
+        dds = []
+        centers = []
         for resV in self.resVs:
             self.res.set_volt(resV)
             print "| {:.4f}".format(resV)
@@ -334,8 +346,32 @@ class eHeExperiment():
                 self.set_DC_mode()
                 self.get_peak(nwa_center=self.sample.peakF, nwa_span=5e6)
                 self.dataCache.post('peakFs', self.sample.peakF)
+                # intelligent jump detection via threshold.
+                d = self.sample.peakF
+                ds.append(d)
+                n = len(ds)
+                if n == 0:
+                    ds = [d, ]
+                    # dds = [0, ] # do nothing about dds.
+                    centers.append(d)
+                elif n == 1:
+                    ds.append(d)
+                    dds.append(ds[-1] - ds[-2])
+                    centers.append(2 * ds[-1] - 1 * ds[-2])
+                elif n == 2:
+                    ds.append(d)
+                    centers.append(1.33 * ds[-1] - 0.66 * ds[-2] + 0.33 * ds[-3])
+                elif n == 3:
+                    ds.append(d)
+                    centers.append(1.33 * ds[-1] - 0.66 * ds[-2] + 0.33 * ds[-3])
+                else:
+                    ds.append(d)
+                    centers.append(1.25 * ds[-1] - 0.75 * ds[-2] + 0.25 * ds[-3] + 0.25 * ds[-4])
+                if abs(d - centers[-1]) >= trackThreshold:
+                    ds = []
+
                 self.set_ramp_mode(trapHigh, trapLow)
-                centerF = filters.gaussian_filter1d(self.dataCache.get('peakFs'), 6)[-1] + self.offsetF
+                centerF = centers[-1] + self.offsetF
                 self.rf.set_frequency(centerF)
                 self.lo.set_frequency(centerF + self.IF)
                 self.dataCache.post('RFs', centerF)
@@ -346,7 +382,7 @@ class eHeExperiment():
             tpts, ch1_pts, ch2_pts = self.alazar.acquire_avg_data(excise=(0, -24))  #excise=(0,4992))
             dtpts, amp1, amp2 = dataanalysis.fast_digital_homodyne(tpts, ch1_pts, ch2_pts, IFfreq=self.IF,
                                                                    AmpPhase=True)
-            self.plotter.append_z('amp', amp1)
+            self.plotter.append_z('amp resV sweep', amp1)
             self.dataCache.post('amp I', amp1)
             self.dataCache.post('amp Q', amp2)
             ampI.append([amp1])
@@ -552,8 +588,8 @@ class eHeExperiment():
             self.na.set_center_frequency(nwa_center)
             self.na.set_span(nwa_span)
         fpts, mags, phases = self.na.take_one()
-        arg = argmax(filters.gaussian_filter1d(mags, 30))
-        maxMag = filters.gaussian_filter1d(mags, 30)[arg]
+        arg = argmax(filters.gaussian_filter1d(mags, 10))
+        maxMag = filters.gaussian_filter1d(mags, 10)[arg]
         self.sample.peakF = fpts[arg]
         self.note("peakF: {}, mag @ {}, arg @ {}".format(self.sample.peakF, maxMag, arg))
         self.na.set_output(na_rf_state)
