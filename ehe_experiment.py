@@ -356,12 +356,9 @@ class eHeExperiment():
                     centers.append(d)
                 elif n == 1:
                     ds.append(d)
-                    dds.append(ds[-1] - ds[-2])
+                    # dds.append(ds[-1] - ds[-2])
                     centers.append(2 * ds[-1] - 1 * ds[-2])
                 elif n == 2:
-                    ds.append(d)
-                    centers.append(1.33 * ds[-1] - 0.66 * ds[-2] + 0.33 * ds[-3])
-                elif n == 3:
                     ds.append(d)
                     centers.append(1.33 * ds[-1] - 0.66 * ds[-2] + 0.33 * ds[-3])
                 else:
@@ -591,6 +588,8 @@ class eHeExperiment():
         arg = argmax(filters.gaussian_filter1d(mags, 10))
         maxMag = filters.gaussian_filter1d(mags, 10)[arg]
         self.sample.peakF = fpts[arg]
+        offset, amplitude, center, hvhm = fitlor(fpts, dBm_to_W(mags))
+        if abs(center - self.sample.peakF) <= nwa_span / 50: self.sample.peakF = center;
         self.note("peakF: {}, mag @ {}, arg @ {}".format(self.sample.peakF, maxMag, arg))
         self.na.set_output(na_rf_state)
         self.rf.set_output(rf_output)

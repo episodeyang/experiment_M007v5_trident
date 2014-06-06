@@ -62,7 +62,7 @@ if __name__ == "__main__":
                     'ch2_enabled': True}
     aConfig = util.dict2obj(**alazarConfig)
 
-    ehe = eHeExperiment(expt_path, prefix, alazarConfig, fridgeParams, filamentParams, newDataFile=False)
+    ehe = eHeExperiment(expt_path, prefix, alazarConfig, fridgeParams, filamentParams, newDataFile=True)
     print ehe.filename
 
     ehe.note('start experiment. ')
@@ -80,7 +80,11 @@ if __name__ == "__main__":
     ehe.clear_na_plotter()
     ehe.clear_nwa_plotter()
 
-    # ehe.trap.setup_volt_source(None, 3.5, 0., 'on')
+    # this loads the sample, and then sweeps the resonator
+    # and the trap.
+    ehe.offsetF = -0.25e6
+    ehe.IF = 0.2e6
+
     ehe.trap.setup_volt_source(None, 1.7, 1.3, 'on')
     ehe.set_DC_mode()
 
@@ -88,35 +92,21 @@ if __name__ == "__main__":
     ehe.na.set_center_frequency(ehe.sample.freqNoE)
     ehe.rinse_n_fire(threshold=.305, intCallback=na_monit, timeout=60)
 
-    # ehe.set_DC_mode()
-    # ehe.get_peak()
-    # ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=2e6)
-    # ehe.na.set_output(False)
-    # ehe.rf.set_frequency(ehe.sample.peakF)
-    # ehe.rf.set_output(True)
-
-    ehe.offsetF = -0.25e6
-    ehe.IF = 0.2e6
-
-    # ehe.lo.set_frequency(ehe.sample.peakF + ehe.IF)
-    # ehe.lo.set_output(True)
-
-    # ehe.res.set_volt(0.5)
-    # time.sleep(100)
-    # ehe.res.set_volt(0.8)
-
     ehe.set_DC_mode()
     ehe.get_peak()
     ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=5e6)
     ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=2e6)
 
-    ehe.res.set_volt(3.0)
+    ehe.res.set_volt(0.7)
     time.sleep(10)
     # ehe.set_ramp_mode(0.05 + 1.1395, 1.1395 - 0.05)
     ehe.set_ramp_mode(3.0, 0, symmetric=False)
-    ehe.nwa.config.range = [ehe.sample.peakF - 1e6, ehe.sample.peakF + 1e6, 200]
+    ehe.nwa.config.range = [ehe.sample.peakF - 1e6, ehe.sample.peakF + 1e6, 40]
     ehe.heterodyne_spectrum()
 
-    ehe.set_volt_sweep(1, 1, 0.1, 3, 0.4, 0.002)
+    ehe.set_volt_sweep(1, 1, 0.1, 1, 0.4, 0.001)
     ehe.set_ramp_mode(3.0, 0, symmetric=False)
     ampI, ampQ = ehe.heterodyne_resV_sweep(trackMode=True, trapTrack=False, trapAmp=1, offsetV=0.7)
+
+    ehe.res.set_volt(0.7)
+
