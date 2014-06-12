@@ -34,10 +34,10 @@ class eHeExperiment():
         self.im = InstrumentManager()
         self.na = self.im['NWA']
         self.heman = self.im['heman']
-        self.srs = self.im['SRS']
+        # self.srs = self.im['SRS']
         self.fridge = self.im['FRIDGE']
         self.fil = self.im['fil']
-        #self.res = self.im['res']
+        self.res = self.im['res']
         #self.trap = self.im['trap']
         #self.lb1 = self.im['LB1']
         # self.lb = self.im['labbrick']
@@ -86,17 +86,16 @@ class eHeExperiment():
             self.nwa.scan = self.nwa_scan;
             self.nwa.config = lambda: None;
 
-            self.res = lambda: 0
+            # self.res = lambda: 0
+            # def set_volt_res(volt):
+            #     self.srs.set_volt(volt, channel=1)
+            # def get_volt_res():
+            #     return self.srs.get_volt(channel=1)
 
-            def set_volt_res(volt):
-                self.srs.set_volt(volt, channel=1)
-
-            def get_volt_res():
-                return self.srs.get_volt(channel=1)
-
-            self.res.set_volt = set_volt_res
-            self.res.get_volt = get_volt_res
-            self.res.set_Vs = self.res_set_Vs
+            # self.res.set_volt = set_volt_res
+            # self.res.get_volt = get_volt_res
+            # self.res.set_Vs = self.res_set_Vs
+            self.res.set_output(True)
 
             self.configNWA()
             self.na.take_one = self.na_take_one;
@@ -175,6 +174,9 @@ class eHeExperiment():
         return offset + amp / 2.0, offset - amp / 2.0
 
     def nwa_sweep(self, fpts=None, config=None):
+        """
+        this is the alazar nwa sweep code, using the alazar homodyne setup.
+        """
         if fpts == None:
             self.nwa.config.fpts = linspace(self.nwa.config.range[0], self.nwa.config.range[1],
                                             self.nwa.config.range[2])
@@ -201,7 +203,7 @@ class eHeExperiment():
         self.dataCache.set('fStart', start)
         self.dataCache.set('fEnd', end)
         self.dataCache.set('fN', n)
-        self.dataCache.note('start freq: {}, end freq: {}, number of points: {}'.format(start, end, n));
+        self.dataCache.note('start freq: {}, end freq: {}, number of points: {}'.format(start, end, n))
 
         for f in self.nwa.config.fpts:
             self.rf.set_frequency(float(f))
@@ -552,7 +554,7 @@ class eHeExperiment():
     def rinse_n_fire(self, threshold=None, intCallback=None, timeout=360):
         self.note("unbias the trap for a second")
         self.res.set_volt(-3)
-        self.srs.set_output(1, True)
+        self.res.set_output(True)
         self.note("make sure the probe is off before the baseline")
         time.sleep(1)
 
@@ -588,8 +590,9 @@ class eHeExperiment():
         arg = argmax(filters.gaussian_filter1d(mags, 10))
         maxMag = filters.gaussian_filter1d(mags, 10)[arg]
         self.sample.peakF = fpts[arg]
-        offset, amplitude, center, hvhm = fitlor(fpts, dBm_to_W(mags))
-        if abs(center - self.sample.peakF) <= nwa_span / 50: self.sample.peakF = center;
+        offset, amplitude, center, hvhm = fitlor(fpts, mags)
+        print "center via fitlor is {}, {}, {}, {}".format(offset, amplitude, center, hvhm)
+        if abs(center - self.sample.peakF) <= (nwa_span / 50.): self.sample.peakF = center
         self.note("peakF: {}, mag @ {}, arg @ {}".format(self.sample.peakF, maxMag, arg))
         self.na.set_output(na_rf_state)
         self.rf.set_output(rf_output)
@@ -663,7 +666,6 @@ class eHeExperiment():
         self.save_spectrum(note)
         self.take_spectrum(span=200)
         self.save_spectrum(note)
-
 
 if __name__ == "__main__":
     print "main just ran but nothing is here."
