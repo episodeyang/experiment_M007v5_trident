@@ -28,6 +28,11 @@ def ramp(start, finish, step):
         pass;
     return Vs
 
+def dualRamp(startPt, finishPt, n):
+    v1s = linspace(startPt[0], finishPt[0], n+1)
+    v2s = linspace(startPt[1], finishPt[1], n+1)
+    return v1s, v2s
+
 
 def ramps(pts, step):
     seg = array([])

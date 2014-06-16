@@ -124,21 +124,21 @@ class eHeExperiment():
         self.na.set_trigger_source('BUS')
         self.na.set_trigger_average_mode(True)
         self.na.set_timeout(10000)
-        #self.na.set_format('slog')
+        self.na.set_format('MLOG')
 
     def updateFilament(self, params):
         #self.note('update filament driver')
         self.fil.setup_driver(params['fil_amp'], params['fil_off'],
                               params['fil_freq'], params['fil_duration'])
 
-    def set_DC_mode(self):
+    def set_DC_mode(self, trapHigh=3.5, trapLow=0):
         self.na.set_output('on')
         self.na.set_trigger_source('bus')
         rf_output = self.rf.get_output()
         self.rf.set_output(False)
         lo_output = self.rf.get_output()
         self.lo.set_output(False)
-        self.trap.setup_volt_source(None, 3.5, 0, 'on')
+        self.trap.setup_volt_source(None, trapHigh, trapLow, 'on')
 
     def set_ramp_mode(self, high=None, low=None, offset=None, amp=None, symmetric=False):
         self.set_ramp(high, low, offset, amp)
@@ -499,27 +499,33 @@ class eHeExperiment():
         self.plotter.append_z(plotName, ans[1])
         return ans
 
-    def get_na_sweep_voltage(self, center=None, span=None, plotName=None):
+    def get_na_sweep_voltage(self, center=None, span=None, npts=None, plotName=None):
         if center != None:
             self.na.set_center_frequency(center)
         if span != None:
             self.na.set_span(span)
+        if npts != None:
+            self.na.set_sweep_points(npts)
 
         self.dataCache.new_stack()
         self.dataCache.note('na_take_one', keyString='type')
         self.dataCache.note(util.get_date_time_string(), keyString='startTime')
 
-        trapStart, trapEnd, trapStep, resStart, resEnd, resStep, doublePass = self.config.volt_sweep_range
-        self.dataCache.note(
-            'trapStart: {} , trapEnd: {} , trapStep: {} , resStart: {} , resEnd: {} , resStep: {} , doublePass: {} '.format(
-                trapStart, trapEnd, trapStep, resStart, resEnd, resStep, doublePass))
-        self.dataCache.set('trapStart', trapStart)
-        self.dataCache.set('trapEnd', trapEnd)
-        self.dataCache.set('trapStep', trapStep)
-        self.dataCache.set('resStart', resStart)
-        self.dataCache.set('resEnd', resEnd)
-        self.dataCache.set('resStep', resStep)
-        self.dataCache.set('doublePass', str(doublePass))
+        try:
+            trapStart, trapEnd, trapStep, resStart, resEnd, resStep, doublePass = self.config.volt_sweep_range
+            self.dataCache.note(
+                'trapStart: {} , trapEnd: {} , trapStep: {} , resStart: {} , resEnd: {} , resStep: {} , doublePass: {} '.format(
+                    trapStart, trapEnd, trapStep, resStart, resEnd, resStep, doublePass))
+            self.dataCache.set('trapStart', trapStart)
+            self.dataCache.set('trapEnd', trapEnd)
+            self.dataCache.set('trapStep', trapStep)
+            self.dataCache.set('resStart', resStart)
+            self.dataCache.set('resEnd', resEnd)
+            self.dataCache.set('resStep', resStep)
+            self.dataCache.set('doublePass', str(doublePass))
+        except:
+            self.dataCache.set('resVs', self.resVs)
+            self.dataCache.set('trapVs', self.trapVs)
 
         fpts, mag, phase = self.na.take_one(plotName=plotName)
         self.dataCache.set('fpts', fpts)
@@ -530,11 +536,59 @@ class eHeExperiment():
             # self.dataCache.set('fpts', fpts)
             self.dataCache.post('mags', mags)
             self.dataCache.post('phases', phases)
+            offset, amplitude, center, hwhm = dsfit.fitlor(fpts, dBmtoW(mag))
+            self.dataCache.post('centers', center)
+            self.plotter.append_y('centers', center)
+
         offset, amplitude, center, hwhm = dsfit.fitlor(fpts, dBmtoW(mag))
         print "center frequency is: ", center
         return center
 
-    def set_volt_sweep(self, trapStart, trapEnd, trapStep, resStart, resEnd, resStep, doublePass=False, showPlot=False):
+    def peak_track_voltage_sweep(self, center=None, span=None, npts=None, plotName=None, dynamicWindowing=False):
+        if center != None:
+            self.na.set_center_frequency(center)
+        # if span != None:
+        #     self.na.set_span(span)
+        if npts != None:
+            self.na.set_sweep_points(npts)
+
+        self.dataCache.new_stack()
+        self.dataCache.note('peak_track_voltage_sweep', keyString='type')
+        self.dataCache.note(util.get_date_time_string(), keyString='startTime')
+
+        self.dataCache.set('resVs', self.resVs)
+        self.dataCache.set('trapVs', self.trapVs)
+
+        assert(self.sample.peakF, 'no peakF found, need to pre fit the peak before start the script')
+        fpts, mag, phase = self.na.take_one(plotName=plotName)
+        self.dataCache.set('fpts', fpts)
+        centers = []
+        for trapV, resV in zip(self.trapVs, self.resVs):
+            print "resV: {}, trapV: {}".format(resV, trapV)
+            self.res.set_volt(resV)
+            self.trap.set_volt(trapV)
+            try:
+                dynamic_range = (centers[-1] - centers[-2]) * 6.0
+            except (TypeError, IndexError):
+                dynamic_range = 0
+            if dynamic_range > span:
+                print "dynamic range is set. taking intermediate peak data."
+                nwa_span = dynamic_range
+                fpts, mags, phases = self.get_peak(nwa_center=self.sample.peakF, nwa_span=nwa_span,  npts=npts)
+            nwa_span = span
+            fpts, mags, phases = self.get_peak(nwa_center=self.sample.peakF, nwa_span=nwa_span,  npts=npts)
+
+            self.dataCache.post('fptss', fpts)
+            self.dataCache.post('mags', mags)
+            self.dataCache.post('phases', phases)
+            self.dataCache.post('centers', self.sample.peakF)
+            centers.append(self.sample.peakF)
+            self.plotter.append_y('centers {}'.format(npts), self.sample.peakF)
+
+        print 'done with peak track voltage sweep!'
+
+    def set_volt_sweep(self, trapStart, trapEnd, trapStep, resStart, resEnd, resStep, doublePass=False, showPlot=False,
+                       straight=False):
         self.config.volt_sweep_range = [trapStart, trapEnd, trapStep, resStart, resEnd, resStep, doublePass]
         if doublePass:
             self.pts = (((trapStart, trapEnd, trapStart), trapStep), )
@@ -545,13 +599,19 @@ class eHeExperiment():
         self.rvps = util.Vramps(self.pts)  #, 0.25,0.1])#Vramps(pts)
         self.trapVs = util.flatten(outer(ones(len(self.rvps)), self.tvps))
         self.resVs = util.flatten(outer(self.rvps, ones(len(self.tvps))))
+
+        if straight:
+            # straight flag completely overrides the sweep
+            self.resVs = util.Vramps((((resStart, resEnd), resStep),))
+            self.trapVs = util.Vramps((((trapStart, trapEnd), trapStep), ))
+
         if showPlot:
             plt.plot(self.resVs, self.trapVs)
             plt.xlim(-1.6, 1.6)
             plt.ylim(-0.8, 1.8)
         print "estimated time is %d days %d hr %d minutes." % util.days_hours_minutes(len(self.trapVs))  # *2)
 
-    def rinse_n_fire(self, threshold=None, intCallback=None, timeout=360):
+    def rinse_n_fire(self, threshold=None, intCallback=None, timeout=360, resV=1.5):
         self.note("unbias the trap for a second")
         self.res.set_volt(-3)
         self.res.set_output(True)
@@ -559,7 +619,12 @@ class eHeExperiment():
         time.sleep(1)
 
         self.note('firing the filament')
-        self.res.set_volt(1.5)
+        try:
+            self.res.set_range(10.0)
+        except:
+            print "not able to set the range of the bias voltage driver. Check if it is the Yoko."
+        self.res.set_volt(resV)
+        print "now the resonator is loaded at {}V".format(self.res.get_volt())
         self.fil.fire_filament(400, 0.01)
 
         self.note("Now wait for cooldown while taking traces")
@@ -572,7 +637,7 @@ class eHeExperiment():
         self.note("fridge's cold, start sweeping...")
         self.note("sweep probe frequency and trap electrode")
 
-    def get_peak(self, nwa_center=None, nwa_span=30e6, set_nwa=True):
+    def get_peak(self, nwa_center=None, nwa_span=30e6, set_nwa=True, npts=320):
         self.na.set_trigger_source('bus')
         na_rf_state = self.na.get_output()
         self.na.set_output(True)
@@ -581,7 +646,8 @@ class eHeExperiment():
         lo_output = self.rf.get_output()
         self.lo.set_output(False)
         if set_nwa:
-            self.na.set_sweep_points(320)
+            sweep_points = self.na.get_sweep_points()
+            self.na.set_sweep_points(npts)
             if nwa_center == None:
                 nwa_center = self.sample.freqNoE - nwa_span / 3.
             self.na.set_center_frequency(nwa_center)
@@ -590,14 +656,23 @@ class eHeExperiment():
         arg = argmax(filters.gaussian_filter1d(mags, 10))
         maxMag = filters.gaussian_filter1d(mags, 10)[arg]
         self.sample.peakF = fpts[arg]
-        offset, amplitude, center, hvhm = fitlor(fpts, mags)
-        print "center via fitlor is {}, {}, {}, {}".format(offset, amplitude, center, hvhm)
-        if abs(center - self.sample.peakF) <= (nwa_span / 50.): self.sample.peakF = center
+        offset, amplitude, center, hvhm = fitlor(fpts, dBm_to_W(mags))
+        print "     center via fitlor is {}, {}, {}, {}".format(offset, amplitude, center, hvhm)
+        print "     abs(fit difference) is {}".format(abs(center - self.sample.peakF))
+        fit_range = nwa_span / 10.
+        print "     the good fit frequency range is {}".format(fit_range)
+
+        if abs(center - self.sample.peakF) <= abs(fit_range):
+            print '     peak fitted in range'
+            self.sample.peakF = center
+        print "     ",
         self.note("peakF: {}, mag @ {}, arg @ {}".format(self.sample.peakF, maxMag, arg))
         self.na.set_output(na_rf_state)
         self.rf.set_output(rf_output)
         self.rf.set_output(lo_output)
-        print "the peak is found at: ", self.sample.peakF
+        if set_nwa:
+            self.na.set_sweep_points(sweep_points)
+        print "     the peak is found at: ", self.sample.peakF
         return fpts, mags, phases
 
     def clear_plotter(self):
@@ -666,6 +741,7 @@ class eHeExperiment():
         self.save_spectrum(note)
         self.take_spectrum(span=200)
         self.save_spectrum(note)
+
 
 if __name__ == "__main__":
     print "main just ran but nothing is here."

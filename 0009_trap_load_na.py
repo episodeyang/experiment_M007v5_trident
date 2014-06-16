@@ -8,7 +8,6 @@ Created on Mon Feb 06 22:13:59 2012
 import math
 import textwrap2
 
-import matplotlib.pyplot as plt
 
 from numpy import *
 from slab import *
@@ -25,6 +24,7 @@ from ehe_experiment import eHeExperiment
 import time
 
 from slab import dataanalysis
+import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
     expt_path = r'S:\_Data\140312 - EonHe M007v5 Trident\data'
@@ -62,7 +62,7 @@ if __name__ == "__main__":
                     'ch2_enabled': True}
     aConfig = util.dict2obj(**alazarConfig)
 
-    ehe = eHeExperiment(expt_path, prefix, alazarConfig, fridgeParams, filamentParams, newDataFile=False)
+    ehe = eHeExperiment(expt_path, prefix, alazarConfig, fridgeParams, filamentParams, newDataFile=True)
     print ehe.filename
 
     ehe.note('start experiment. ')
@@ -88,27 +88,43 @@ if __name__ == "__main__":
     ehe.trap.setup_volt_source(None, 1.7, 1.3, 'on')
     ehe.set_DC_mode()
 
-    ehe.na.set_span(30e6)
-    ehe.na.set_center_frequency(ehe.sample.freqNoE)
-    ehe.rinse_n_fire(threshold=.305, intCallback=na_monit, timeout=60)
+    # plt.plot(ehe.trapVs, ehe.resVs, 'r+')
+    # plt.xlabel('trap V')
+    # plt.ylabel('resonator V')
+    # plt.show()
 
-    ehe.res.set_volt(0.55)
+    ehe.res.set_volt(-1)
+    ehe.trap.set_volt(-1)
     time.sleep(10)
+    ehe.na.set_span(50e6)
+    ehe.na.set_center_frequency(ehe.sample.freqNoE - 15e6)
+    ehe.rinse_n_fire(threshold=.305, intCallback=na_monit, timeout=60, resV=1.0)
 
     ehe.set_DC_mode()
+    ehe.res.set_volt(1)
+    ehe.trap.set_volt(1)
+    time.sleep(10)
+    ehe.res.set_volt(0.2)
+    ehe.trap.set_volt(0.6)
+    
+
+    ehe.set_DC_mode(2, -2)
+    ehe.na.set_sweep_points(360)
+    ehe.na.set_power(-25)
+    ehe.na.set_averages(1)
+    ehe.na.set_ifbw(150)
     ehe.get_peak()
     ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=5e6)
     ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=2e6)
+    # ehe.na.set_averages(2)
+    ehe.na.set_power(-25)
 
-    ehe.set_ramp_mode(2.5, 0.8, symmetric=False)
-    ehe.nwa.config.range = [ehe.sample.peakF - 1e6, ehe.sample.peakF + 1e6, 40]
-    ehe.heterodyne_spectrum()
+    seg0 = util.dualRamp([0.2, 0.6], [-0.2, 0.2], 150)
+    print seg0[:5]
+    seg1 = util.dualRamp([-0.2, 0.2], [-0.2, -0.3], 250)
+    print seg1[:5]
+    ehe.resVs = concatenate((seg0[0], seg1[0]))
+    ehe.trapVs = concatenate((seg0[1], seg1[1]))
+    print ehe.resVs[:5]
 
-    ehe.set_volt_sweep(1, 1, 0.1, 0.5, 1.0, 0.0005)
-    ehe.set_ramp_mode(3.0, 0, symmetric=False)
-    ampI, ampQ = ehe.heterodyne_resV_sweep(trackMode=True, trapTrack=False, trapAmp=1, offsetV=0.7)
-
-    ehe.set_volt_sweep(1, 1, 0.1, 1.0, 0.5, 0.0005)
-    ehe.set_ramp_mode(3.0, 0, symmetric=False)
-    ampI, ampQ = ehe.heterodyne_resV_sweep(trackMode=True, trapTrack=False, trapAmp=1, offsetV=0.7)
-
+    ehe.peak_track_voltage_sweep(center=ehe.sample.freqNoE - 11e6, span=2e6, npts=160, dynamicWindowing=True)
