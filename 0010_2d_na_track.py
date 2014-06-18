@@ -8,7 +8,6 @@ Created on Mon Feb 06 22:13:59 2012
 import math
 import textwrap2
 
-import matplotlib.pyplot as plt
 
 from numpy import *
 from slab import *
@@ -25,6 +24,7 @@ from ehe_experiment import eHeExperiment
 import time
 
 from slab import dataanalysis
+import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
     expt_path = r'S:\_Data\140312 - EonHe M007v5 Trident\data'
@@ -42,17 +42,11 @@ if __name__ == "__main__":
         "pulses": 150}
     labbrickParams = {}
 
-    # naParams = {
-    #     'power': -15,
-    #     'ifbw': 50,
-    #     'sweep_points': 320,
-    #     'avg': 1,
-    # }
     alazarConfig = {'clock_edge': 'rising', 'trigger_delay': 0,
                     'ch1_filter': False, 'ch1_enabled': True,
                     'samplesPerRecord': 49024,
                     'recordsPerBuffer': 200,
-                    'recordsPerAcquisition': 20000,
+                    'recordsPerAcquisition': 10000,
                     # 'samples_per_buffer': 2000064,
                     # 'samples_per_record': 2000064,
                     # 'seconds_per_buffer': 1.0e-6,
@@ -94,28 +88,48 @@ if __name__ == "__main__":
     ehe.trap.setup_volt_source(None, 1.7, 1.3, 'on')
     ehe.set_DC_mode()
 
-    ehe.na.set_power(-5)
-    ehe.na.set_ifbw(50)
-    ehe.na.set_span(40e6)
-    ehe.na.set_center_frequency(ehe.sample.freqNoE)
-    ehe.rinse_n_fire(threshold=.900, intCallback=na_monit, timeout=60, resV=0.8, pulses=2, delay=0.01)
+    # plt.plot(ehe.trapVs, ehe.resVs, 'r+')
+    # plt.xlabel('trap V')
+    # plt.ylabel('resonator V')
+    # plt.show()
 
-    # ehe.res.set_volt(0.55)
-    time.sleep(10)
+    resStart = 0.8; resEnd = 0.0
+    for resEnd in linspan(0.100, 0.000, 21):
+        ehe.res.set_volt(-1)
+        ehe.trap.set_volt(-1)
+        time.sleep(10)
+        ehe.na.set_span(50e6)
+        ehe.na.set_center_frequency(ehe.sample.freqNoE - 15e6)
+        ehe.rinse_n_fire(threshold=.900, intCallback=na_monit, timeout=10, resV=1.0, pulses=2, delay=0.01)
 
-    ehe.set_DC_mode()
-    ehe.get_peak()
-    ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=5e6)
-    ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=2e6)
+        ehe.set_DC_mode()
+        ehe.res.set_volt(1)
+        ehe.trap.set_volt(1)
+        time.sleep(10)
+        ehe.res.set_volt(0.8)
+        ehe.trap.set_volt(1.6)
 
-    ehe.set_ramp_mode(2., -0.2, symmetric=False)
-    ehe.nwa.config.range = [ehe.sample.peakF - 1e6, ehe.sample.peakF + 1e6, 40]
-    ehe.heterodyne_spectrum()
 
-    ehe.set_volt_sweep(1, 1, 0.1, 0.8, 0.6, 0.01)
-    # ehe.set_ramp_mode(3.0, 0, symmetric=False)
-    ampI, ampQ = ehe.heterodyne_resV_sweep(trackMode=True, trapTrack=False, trapAmp=1, offsetV=0.7)
+        ehe.set_DC_mode(2, -2)
+        ehe.na.set_sweep_points(360)
+        ehe.na.set_power(-25)
+        ehe.na.set_averages(1)
+        ehe.na.set_ifbw(150)
+        ehe.get_peak()
+        ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=5e6)
+        ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=2e6)
+        # ehe.na.set_averages(2)
+        ehe.na.set_power(-25)
 
-    # ehe.set_volt_sweep(1, 1, 0.1, 1.0, 0.5, 0.0005)
-    # ehe.set_ramp_mode(3.0, 0, symmetric=False)
-    # ampI, ampQ = ehe.heterodyne_resV_sweep(trackMode=True, trapTrack=False, trapAmp=1, offsetV=0.7)
+        seg0 = util.dualRamp([resStart, 1.6], [resEnd, 0.8], 200)
+        print seg0[:5]
+        seg1 = util.dualRamp([resEnd, 0.8], [resEnd, -1.6], 350)
+        print seg1[:5]
+        ehe.resVs = concatenate((seg0[0], seg1[0]))
+        ehe.trapVs = concatenate((seg0[1], seg1[1]))
+        print ehe.resVs[:5]
+
+        ehe.peak_track_voltage_sweep(center=ehe.sample.freqNoE - 11e6, span=2e6, npts=160, dynamicWindowing=True)
+
+        cache.post('resStart', resStart)
+        cache.post('resEnd', resEnd)

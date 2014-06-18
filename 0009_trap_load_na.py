@@ -62,7 +62,7 @@ if __name__ == "__main__":
                     'ch2_enabled': True}
     aConfig = util.dict2obj(**alazarConfig)
 
-    ehe = eHeExperiment(expt_path, prefix, alazarConfig, fridgeParams, filamentParams, newDataFile=True)
+    ehe = eHeExperiment(expt_path, prefix, alazarConfig, fridgeParams, filamentParams, newDataFile=False)
     print ehe.filename
 
     ehe.note('start experiment. ')
@@ -98,15 +98,15 @@ if __name__ == "__main__":
     time.sleep(10)
     ehe.na.set_span(50e6)
     ehe.na.set_center_frequency(ehe.sample.freqNoE - 15e6)
-    ehe.rinse_n_fire(threshold=.305, intCallback=na_monit, timeout=60, resV=1.0)
+    ehe.rinse_n_fire(threshold=.900, intCallback=na_monit, timeout=10, resV=1.0, pulses=2, delay=0.01)
 
     ehe.set_DC_mode()
     ehe.res.set_volt(1)
     ehe.trap.set_volt(1)
     time.sleep(10)
-    ehe.res.set_volt(0.2)
-    ehe.trap.set_volt(0.6)
-    
+    ehe.res.set_volt(0.8)
+    ehe.trap.set_volt(1.6)
+
 
     ehe.set_DC_mode(2, -2)
     ehe.na.set_sweep_points(360)
@@ -119,9 +119,9 @@ if __name__ == "__main__":
     # ehe.na.set_averages(2)
     ehe.na.set_power(-25)
 
-    seg0 = util.dualRamp([0.2, 0.6], [-0.2, 0.2], 150)
+    seg0 = util.dualRamp([0.8, 1.6], [0.0, 0.8], 200)
     print seg0[:5]
-    seg1 = util.dualRamp([-0.2, 0.2], [-0.2, -0.3], 250)
+    seg1 = util.dualRamp([0.0, 0.8], [0.0, -1.5], 350)
     print seg1[:5]
     ehe.resVs = concatenate((seg0[0], seg1[0]))
     ehe.trapVs = concatenate((seg0[1], seg1[1]))

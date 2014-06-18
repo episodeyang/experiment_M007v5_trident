@@ -294,7 +294,7 @@ class eHeExperiment():
         return concatenate(ampI), concatenate(ampQ)  #, phase1 #ch1_pts, ch2_pts
 
     def heterodyne_resV_sweep(self, config=None, trackMode=True, trapTrack=True, trapAmp=1, offsetV=0,
-                              trackThreshold=50e3):
+                              trackThreshold=50e3, snapshots=None):
 
         if self.alazar.config != config and config != None:
             print "new configuration file"
@@ -326,6 +326,9 @@ class eHeExperiment():
 
         self.rf.set_frequency(self.sample.peakF + self.offsetF)
         self.lo.set_frequency(self.sample.peakF + self.offsetF + self.IF)
+
+        if snapshots != None:
+            snapshots = sorted(snapshots);
 
         ampI = []
         ampQ = []
@@ -558,6 +561,7 @@ class eHeExperiment():
 
         self.dataCache.set('resVs', self.resVs)
         self.dataCache.set('trapVs', self.trapVs)
+        self.dataCache.set('temperature', self.fridge.get_temperature())
 
         assert(self.sample.peakF, 'no peakF found, need to pre fit the peak before start the script')
         fpts, mag, phase = self.na.take_one(plotName=plotName)
@@ -611,7 +615,7 @@ class eHeExperiment():
             plt.ylim(-0.8, 1.8)
         print "estimated time is %d days %d hr %d minutes." % util.days_hours_minutes(len(self.trapVs))  # *2)
 
-    def rinse_n_fire(self, threshold=None, intCallback=None, timeout=360, resV=1.5):
+    def rinse_n_fire(self, threshold=None, intCallback=None, timeout=360, resV=1.5, pulses=400, delay=0.01):
         self.note("unbias the trap for a second")
         self.res.set_volt(-3)
         self.res.set_output(True)
@@ -625,7 +629,7 @@ class eHeExperiment():
             print "not able to set the range of the bias voltage driver. Check if it is the Yoko."
         self.res.set_volt(resV)
         print "now the resonator is loaded at {}V".format(self.res.get_volt())
-        self.fil.fire_filament(400, 0.01)
+        self.fil.fire_filament(pulses, delay)
 
         self.note("Now wait for cooldown while taking traces")
         if threshold == None:
