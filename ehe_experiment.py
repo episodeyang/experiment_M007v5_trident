@@ -38,12 +38,12 @@ class eHeExperiment():
         self.fridge = self.im['FRIDGE']
         self.fil = self.im['fil']
         self.res = self.im['res']
-        #self.trap = self.im['trap']
-        #self.lb1 = self.im['LB1']
+        self.trap = self.im['trap']
+        # self.trap = self.im['BNC_trap']
+        # self.lb1 = self.im['LB1']
         # self.lb = self.im['labbrick']
         self.rf = self.im['BNC845_RF_0']  # the rf probe tone
         self.lo = self.im['BNC845_RF_1']  # the local oscillator
-        self.trap = self.im['BNC_trap']
         self.trigger = self.im['BNC_sync']
         self.alazar = Alazar()
         self.sa = self.im.sa
@@ -138,9 +138,13 @@ class eHeExperiment():
         self.rf.set_output(False)
         lo_output = self.rf.get_output()
         self.lo.set_output(False)
-        self.trap.setup_volt_source(None, trapHigh, trapLow, 'on')
+        try:
+            self.trap.setup_volt_source(None, trapHigh, trapLow, 'on')
+        except AttributeError:
+            print 'using YokogawaGS200'
 
     def set_ramp_mode(self, high=None, low=None, offset=None, amp=None, symmetric=False):
+        # if hasattr(self.trap, 'set_burst_phases'):
         self.set_ramp(high, low, offset, amp)
         self.rf.set_output(True)
         self.lo.set_output(True)
@@ -160,6 +164,7 @@ class eHeExperiment():
         """
         high and low overrides amp and offset.
         """
+        # if hasattr(self.trap, 'set_burst_phases'):
         if low != None and high != None:
             amp = abs(high - low)
             offset = max(high, low) - amp / 2.

@@ -98,9 +98,9 @@ if __name__ == "__main__":
     ehe.na.set_ifbw(50)
     ehe.na.set_span(40e6)
     ehe.na.set_center_frequency(ehe.sample.freqNoE)
-    ehe.rinse_n_fire(threshold=.900, intCallback=na_monit, timeout=60, resV=0.8, pulses=2, delay=0.01)
+    ehe.rinse_n_fire(threshold=.900, intCallback=na_monit, timeout=60, resV=1.5, pulses=2, delay=0.01)
 
-    # ehe.res.set_volt(0.55)
+    #ehe.res.set_volt(0.8)
     time.sleep(10)
 
     ehe.set_DC_mode()
@@ -108,13 +108,13 @@ if __name__ == "__main__":
     ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=5e6)
     ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=2e6)
 
-    ehe.set_ramp_mode(2., -0.2, symmetric=False)
-    ehe.nwa.config.range = [ehe.sample.peakF - 1e6, ehe.sample.peakF + 1e6, 40]
+    ehe.set_ramp_mode(2., 0.8, symmetric=False)
+    ehe.nwa.config.range = [ehe.sample.peakF - 1e6, ehe.sample.peakF + 1e6, 200]
     ehe.heterodyne_spectrum()
 
-    ehe.set_volt_sweep(1, 1, 0.1, 0.8, 0.6, 0.01)
+    ehe.set_volt_sweep(1, 1, 0.1, 0.8, 0.0, 0.002)
     # ehe.set_ramp_mode(3.0, 0, symmetric=False)
-    ampI, ampQ = ehe.heterodyne_resV_sweep(trackMode=True, trapTrack=False, trapAmp=1, offsetV=0.7)
+    ampI, ampQ = ehe.heterodyne_resV_sweep(trackMode=True, trapTrack=True, trapAmp=0.8, offsetV=1.1)
 
     # ehe.set_volt_sweep(1, 1, 0.1, 1.0, 0.5, 0.0005)
     # ehe.set_ramp_mode(3.0, 0, symmetric=False)
