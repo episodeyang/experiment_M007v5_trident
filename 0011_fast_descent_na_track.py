@@ -62,7 +62,7 @@ if __name__ == "__main__":
                     'ch2_enabled': True}
     aConfig = util.dict2obj(**alazarConfig)
 
-    ehe = eHeExperiment(expt_path, prefix, alazarConfig, fridgeParams, filamentParams, newDataFile=False)
+    ehe = eHeExperiment(expt_path, prefix, alazarConfig, fridgeParams, filamentParams, newDataFile=True)
     print ehe.filename
 
     ehe.note('start experiment. ')
@@ -93,55 +93,70 @@ if __name__ == "__main__":
     # plt.ylabel('resonator V')
     # plt.show()
 
-    resStart = 0.4; resEnd = 0.0
-    for resEnd in linspace(0.040, -0.040, 11):
-        ehe.res.set_volt(-1)
-        ehe.trap.set_volt(-1)
-        time.sleep(10)
-        ehe.na.set_span(50e6)
-        ehe.na.set_center_frequency(ehe.sample.freqNoE - 15e6)
-        ehe.rinse_n_fire(threshold=.905, intCallback=na_monit, timeout=10, resV=1.0, pulses=2, delay=0.01)
+    #   ehe.res.set_volt(-6)
+    #   ehe.trap.set_volt(-6)
+    #   time.sleep(10)
 
-        ehe.set_DC_mode()
-        ehe.res.set_volt(1)
-        ehe.trap.set_volt(1)
-        time.sleep(10)
-        ehe.res.set_volt(0.8)
-        ehe.trap.set_volt(1.6)
-
-
-        ehe.set_DC_mode(2, -2)
-        ehe.na.set_sweep_points(360)
-        ehe.na.set_power(-25)
-        ehe.na.set_averages(1)
-        ehe.na.set_ifbw(150)
-        ehe.get_peak()
-        ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=5e6)
-        ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=2e6)
-        # ehe.na.set_averages(2)
-        ehe.na.set_power(-25)
-
-        quickResEnd = 0.1
-        seg0 = util.dualRamp([resStart, resStart + 0.8], [quickResEnd, quickResEnd + 0.8], 800)
-        print seg0[:5]
-
-        for resV, trapV in zip(seg0[0], seg0[1]):
-            print resV,
-            time.sleep(0.01);
-            ehe.res.set_volt(resV)
-            ehe.trap.set_volt(trapV)
-
-
-        seg0 = util.dualRamp([quickResEnd, quickResEnd+ 0.8], [resEnd, resEnd + 0.8], 50)
-        seg1 = util.dualRamp([resEnd, 0.8], [resEnd, -.1], 150)
-        print seg1[:5]
-        ehe.resVs = concatenate((seg0[0], seg1[0]))
-        ehe.trapVs = concatenate((seg0[1], seg1[1]))
-        # ehe.resVs = seg1[0]
-        # ehe.trapVs = seg1[1]
-        print ehe.resVs[:5]
-        ehe.dataCache.set('resStart', resStart)
-        ehe.dataCache.set('resEnd', resEnd)
-
-        ehe.peak_track_voltage_sweep(center=ehe.sample.freqNoE - 11e6, span=2e6, npts=160, dynamicWindowing=True)
-
+    # resStart = 1.
+    # resEnd = 0.0
+    # ehe.dataCache.note('trying to sweep the trap at zero voltage')
+    # for resEnd in array([0.00]*30):
+    #     ehe.res.set_volt(-3)
+    #     ehe.trap.set_volt(-3)
+    #     time.sleep(10)
+    #     ehe.na.set_span(50e6)
+    #     ehe.na.set_center_frequency(ehe.sample.freqNoE - 15e6)
+    #     ehe.rinse_n_fire(threshold=.905, intCallback=na_monit, timeout=10, resV=1.0, trapV=2.0, pulses=200, delay=0.01)
+    #
+    #     ehe.set_DC_mode()
+    #     ehe.res.set_volt(1)
+    #     ehe.trap.set_volt(1)
+    #     time.sleep(10)
+    #     ehe.res.set_volt(0.8)
+    #     ehe.trap.set_volt(1.6)
+    #
+    #     ehe.set_DC_mode(2, -2)
+    #     ehe.na.set_sweep_points(360)
+    #     ehe.na.set_power(-25)
+    #     ehe.na.set_averages(1)
+    #     ehe.na.set_ifbw(150)
+    #     ehe.get_peak()
+    #     ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=5e6)
+    #     ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=2e6)
+    #     # ehe.na.set_averages(2)
+    #     ehe.na.set_power(-25)
+    #
+    #     quickResEnd = -0.1
+    #     seg0 = util.dualRamp([resStart, resStart + 2.0], [-1.0, -1.0 + 1.8], 400)
+    #     seg1 = util.dualRamp([-1.0, -1.0 + 1.8], [quickResEnd, quickResEnd + 0.8], 400)
+    #
+    #     print seg0[:5]
+    #
+    #     for resV, trapV in zip(concatenate((seg0[0], seg1[0]),), concatenate((seg0[1], seg1[1]), )):
+    #         print resV,
+    #         time.sleep(0.01)
+    #         ehe.res.set_volt(resV)
+    #         ehe.trap.set_volt(trapV)
+    #
+    #     ehe.get_peak()
+    #     ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=5e6)
+    #     ehe.get_peak(nwa_center=ehe.sample.peakF, nwa_span=2e6)
+    #
+    #     ehe.resVs, ehe.trapVs = util.dualRamp([quickResEnd, quickResEnd + 0.8], [resEnd, resEnd + 0.8], 100)
+    #     ehe.peak_track_voltage_sweep(center=ehe.sample.freqNoE - 11e6, span=2e6, npts=160, dynamicWindowing=True)
+    #     ehe.dataCache.set('resStart', resStart)
+    #     ehe.dataCache.set('resEnd', resEnd)
+    #
+    #     seg0 = util.dualRamp([resEnd, resEnd + 0.8], [resEnd, .0], 800)
+    #     seg1 = util.dualRamp([resEnd, 0.8], [resEnd, resEnd + 1.0], 50)
+    #     ehe.resVs = concatenate((seg0[0], seg1[0]))
+    #     ehe.trapVs = concatenate((seg0[1], seg1[1]))
+    #     # ehe.resVs, ehe.trapVs = seg0
+    #     ehe.peak_track_voltage_sweep(center=ehe.sample.peakF + 2e6/5., span=2e6, npts=160, dynamicWindowing=False)
+    #     ehe.dataCache.set('resStart', resStart)
+    #     ehe.dataCache.set('resEnd', resEnd)
+    #
+    #     ehe.resVs, ehe.trapVs = util.dualRamp([resEnd, .0], [-3, -3], 20)
+    #     ehe.peak_track_voltage_sweep(span=2e6, npts=160, dynamicWindowing=True)
+    #     ehe.dataCache.set('resStart', resStart)
+    #     ehe.dataCache.set('resEnd', resEnd)

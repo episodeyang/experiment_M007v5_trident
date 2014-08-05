@@ -54,8 +54,8 @@ class eHeExperiment():
             self.expt_path = expt_path
             self.prefix = prefix
 
-        self.note_maxLength = 79;
-        self.config = lambda: None;
+        self.note_maxLength = 79
+        self.config = lambda: None
 
         if alazarConfig != None and fridgeParams != None and filamentParams != None:
             self.plotter = LivePlotClient()
@@ -132,6 +132,7 @@ class eHeExperiment():
                               params['fil_freq'], params['fil_duration'])
 
     def set_DC_mode(self, trapHigh=3.5, trapLow=0):
+
         self.na.set_output('on')
         self.na.set_trigger_source('bus')
         rf_output = self.rf.get_output()
@@ -553,6 +554,11 @@ class eHeExperiment():
         return center
 
     def peak_track_voltage_sweep(self, center=None, span=None, npts=None, plotName=None, dynamicWindowing=False):
+        '''
+        when dynamic windowing is turned off, the peakTracker does not move
+        the window around unless the jump is larger than 1/6th of the entire
+        span.
+        '''
         if center != None:
             self.na.set_center_frequency(center)
         # if span != None:
@@ -568,7 +574,7 @@ class eHeExperiment():
         self.dataCache.set('trapVs', self.trapVs)
         self.dataCache.set('temperature', self.fridge.get_temperature())
 
-        assert(self.sample.peakF, 'no peakF found, need to pre fit the peak before start the script')
+        assert (self.sample.peakF, 'no peakF found, need to pre fit the peak before start the script')
         fpts, mag, phase = self.na.take_one(plotName=plotName)
         self.dataCache.set('fpts', fpts)
         centers = []
@@ -581,11 +587,18 @@ class eHeExperiment():
             except (TypeError, IndexError):
                 dynamic_range = 0
             if dynamic_range > span:
-                print "dynamic range is set. taking intermediate peak data."
+                print "peak out of dynamic window. taking intermediate peak data.---------------------"
+                print "dynamicWindowing is :{} ======-------------------------".format(dynamicWindowing)
                 nwa_span = dynamic_range
-                fpts, mags, phases = self.get_peak(nwa_center=self.sample.peakF, nwa_span=nwa_span,  npts=npts)
-            nwa_span = span
-            fpts, mags, phases = self.get_peak(nwa_center=self.sample.peakF, nwa_span=nwa_span,  npts=npts)
+                self.get_peak(nwa_center=self.sample.peakF, nwa_span=nwa_span, npts=npts)
+                nwa_span = span
+                fpts, mags, phases = self.get_peak(set_nwa=True, nwa_center=self.sample.peakF, nwa_span=nwa_span,
+                                                   npts=npts)
+            else:
+                print "dynamicWindowing is :{} ===============================".format(dynamicWindowing)
+                nwa_span = span
+                fpts, mags, phases = self.get_peak(set_nwa=dynamicWindowing, nwa_center=self.sample.peakF,
+                                                   nwa_span=nwa_span, npts=npts)
 
             self.dataCache.post('fptss', fpts)
             self.dataCache.post('mags', mags)
@@ -611,6 +624,7 @@ class eHeExperiment():
 
         if straight:
             # straight flag completely overrides the sweep
+            # problem is that two not not necessarily the same length
             self.resVs = util.Vramps((((resStart, resEnd), resStep),))
             self.trapVs = util.Vramps((((trapStart, trapEnd), trapStep), ))
 
@@ -618,9 +632,9 @@ class eHeExperiment():
             plt.plot(self.resVs, self.trapVs)
             plt.xlim(-1.6, 1.6)
             plt.ylim(-0.8, 1.8)
-        print "estimated time is %d days %d hr %d minutes." % util.days_hours_minutes(len(self.trapVs))  # *2)
+        print "estimated time is %d days %d hr %d minutes." % util.days_hours_minutes(len(self.trapVs))
 
-    def rinse_n_fire(self, threshold=None, intCallback=None, timeout=360, resV=1.5, pulses=400, delay=0.01):
+    def rinse_n_fire(self, threshold=None, intCallback=None, timeout=360, resV=1.5, trapV=1.5, pulses=400, delay=0.01):
         self.note("unbias the trap for a second")
         self.res.set_volt(-3)
         self.res.set_output(True)
@@ -630,9 +644,11 @@ class eHeExperiment():
         self.note('firing the filament')
         try:
             self.res.set_range(10.0)
+            self.trap.set_range(10.0)
         except:
             print "not able to set the range of the bias voltage driver. Check if it is the Yoko."
         self.res.set_volt(resV)
+        self.trap.set_volt(trapV)
         print "now the resonator is loaded at {}V".format(self.res.get_volt())
         self.fil.fire_filament(pulses, delay)
 
@@ -725,7 +741,7 @@ class eHeExperiment():
             self.sa.set_resbw(resbw)
         else:
             self.sa.set_resbw(self.sa.get_span() / float(self.sa.get_sweep_points()) * 2)
-        self.sa.trigger_single();
+        self.sa.trigger_single()
 
     def save_spectrum(self, notes=None):
         fpts, mags = self.sa.take_one()  #self.sa.read_data() #

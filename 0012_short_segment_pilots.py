@@ -88,29 +88,14 @@ if __name__ == "__main__":
     #ehe.trap.setup_volt_source(None, 1.7, 1.3, 'on')
     ehe.set_DC_mode()
 
-    # plt.plot(ehe.trapVs, ehe.resVs, 'r+')
-    # plt.xlabel('trap V')
-    # plt.ylabel('resonator V')
-    # plt.show()
+    # resStart = 0.4
+    resEnd = 0.0
+    trapStart = 1.3
+    trapEnd = 0.30
+    for resEnd in array([0.100]*10):#linspace(0.040, -0.040, 11):
 
-    resStart = 0.4; resEnd = 0.0
-    for resEnd in array([0.040]*8):#linspace(0.040, 0.060, 3):
-        ehe.res.set_volt(-1)
-        ehe.trap.set_volt(-1)
-        time.sleep(10)
-        ehe.na.set_span(50e6)
-        ehe.na.set_center_frequency(ehe.sample.freqNoE - 15e6)
-        ehe.rinse_n_fire(threshold=.905, intCallback=na_monit, timeout=10, resV=1.0, pulses=2, delay=0.01)
-
-        ehe.set_DC_mode()
-        ehe.res.set_volt(1)
-        ehe.trap.set_volt(1)
-        time.sleep(10)
-        ehe.res.set_volt(0.8)
-        ehe.trap.set_volt(1.6)
-
-
-        ehe.set_DC_mode(2, -2)
+        # doesn't matter. does not set volts when using yoko anyways.
+        # ehe.set_DC_mode(2, -2)
         ehe.na.set_sweep_points(360)
         ehe.na.set_power(-25)
         ehe.na.set_averages(1)
@@ -121,15 +106,13 @@ if __name__ == "__main__":
         # ehe.na.set_averages(2)
         ehe.na.set_power(-25)
 
-        seg0 = util.dualRamp([resStart, resStart + 1], [resEnd, resEnd + 1], 40)
-        print seg0[:5]
-        seg1 = util.dualRamp([resEnd, 1], [resEnd, -.2], 150)
+        seg1 = util.dualRamp([resEnd, trapStart], [resEnd, trapEnd], 1000)
+        seg2 = util.dualRamp([resEnd, trapEnd], [resEnd, trapStart], 1000)
         print seg1[:5]
-        ehe.resVs = concatenate((seg0[0], seg1[0]))
-        ehe.trapVs = concatenate((seg0[1], seg1[1]))
+        ehe.resVs = concatenate((seg1[0], seg2[0]))
+        ehe.trapVs = concatenate((seg1[1], seg2[1]))
         print ehe.resVs[:5]
 
-        ehe.peak_track_voltage_sweep(center=ehe.sample.freqNoE - 11e6, span=2e6, npts=160, dynamicWindowing=True)
-
-        ehe.dataCache.set('resStart', resStart)
+        ehe.peak_track_voltage_sweep(dynamicWindowing=False, center=ehe.sample.peakF+2e6/5., span=2e6, npts=160)
+        # ehe.dataCache.set('resStart', resStart)
         ehe.dataCache.set('resEnd', resEnd)

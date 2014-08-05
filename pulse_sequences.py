@@ -359,14 +359,14 @@ class pulse_sequence():
         #are connected to which devices
         self.channel_index = dict()
         self.channel_index['card_trig'] = 0
-        self.channel_index['read_trig'] = [1,3]
-        self.channel_index['drive_trig'] = [2,4]
+        self.channel_index['read_trig'] = [1, 3]
+        self.channel_index['drive_trig'] = [2, 4]
         self.channel_index['flux_trig'] = 5
-        self.channel_index['drive_I'] = [0,2]
-        self.channel_index['drive_Q'] = [1,3]
-        self.channel_index['flux'] = [4,5]
-        
-        #Uncomment to use the TEK for flux pulses
+        self.channel_index['drive_I'] = [0, 2]
+        self.channel_index['drive_Q'] = [1, 3]
+        self.channel_index['flux'] = [4, 5]
+
+        # Uncomment to use the TEK for flux pulses
         #self.channel_index['drive_Q'] = [4,5]
         #self.channel_index['flux'] = [1,3]
     
@@ -483,6 +483,7 @@ class pulse_sequence():
     
             for j in range(len(self.analogwf[ch])):
             
+                print "blah"
                 awg.add_floatsegment(self.analogwf[ch][j].pulse,segnum=j+1, float_range=(-1.,1.))
                 print "Loading Waveform" + str(j) + " for Channel " + str(i)
                 

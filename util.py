@@ -63,6 +63,7 @@ def days_hours_minutes(seconds):
 
 class dict2obj:
     def __init__(self, **entries):
+        """To use, do: obj = dict2obj(**dict). Note that the ** is necessary."""
         self.__dict__.update(entries)
     def __repr__(self):
         return '<%/s>'%str('\n'.join('%s:%s'%(k,repr(v)) for (k,v) in self.__dict__.iteritems()))

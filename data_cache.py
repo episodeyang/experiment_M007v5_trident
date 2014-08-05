@@ -42,7 +42,7 @@ class dataCacheProxy():
             else:
                 self.filename = get_current_filename(self.data_directory, self.prefix, suffix='.h5')
         except AttributeError:
-            self.filename = self.exp.filename;
+            self.filename = self.exp.filename
         self.path = path.join(self.data_directory, self.filename)
 
     def add(self, keyString, data):
@@ -147,7 +147,7 @@ class dataCacheProxy():
         keyList = keyString.split('.')
         with SlabFile(self.path, 'r') as f:
             return get_indices(f, keyList)
-        
+
     def new_stack(self):
         index = self.next_stack()
         with SlabFile(self.path) as f:
@@ -165,6 +165,13 @@ class dataCacheProxy():
             print string
         for line in textwrap2.wrap(string, maxLength):
             self.post(keyString, line + ' ' * (maxLength - len(line)))
+    def save_dict(self, keyString, d):
+        if not isinstance(d, dict): return
+        for key, value in d.iteritems():
+            if isinstance(value, dict):
+                self.save_dict(keyString + '.' + key, value)
+            else:
+                self.post(keyString + '.' + key, value)
 
 if __name__ == "__main__":
     print "running a test..."
@@ -181,22 +188,33 @@ if __name__ == "__main__":
 
     # example usage
     cache.append('key1', (test_data_x, test_data_y) )
-    plt.plot(cache.get('key1')[0][1])
+    #plt.plot(cache.get('key1')[0][1])
     cache.add('key2', (test_data_x, test_data_y) )
-    plt.plot(cache.get('key2')[1])
+    #plt.plot(cache.get('key2')[1])
     # plt.show()
 
     cache.add('group1.key1', (test_data_x, test_data_y) )
-    plt.plot(cache.get('group1.key1')[1])
+    #plt.plot(cache.get('group1.key1')[1])
     cache.append('group1.key2', (test_data_x, test_data_y) )
-    plt.plot(cache.get('group1.key2')[0][1])
+    #plt.plot(cache.get('group1.key2')[0][1])
     # plt.show()
 
     cache.add('group1.subgroup.key2', (test_data_x, test_data_y) )
-    plt.plot(cache.get('group1.subgroup.key2')[1])
+    #plt.plot(cache.get('group1.subgroup.key2')[1])
     cache.append('group1.subgroup.key3', (test_data_x, test_data_y) )
-    plt.plot(cache.get('group1.subgroup.key3')[0][1])
-    plt.show()
+    #plt.plot(cache.get('group1.subgroup.key3')[0][1])
+    #plt.show()
+
+    # now test the save_dict method
+    d = {
+            'key0': 'haha',
+            'key1': 'haha',
+            'd0': {
+                'key2': 'some stuff is here',
+                'key3': 'some more stuff is here'
+            }
+        }
+    cache.save_dict('dictionary', d)
 
 
     #now data is saved in the dataCache
