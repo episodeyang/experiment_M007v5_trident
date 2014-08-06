@@ -23,9 +23,12 @@ class dataCacheProxy():
         """ filepath is for reading out files ONLY. To create new data files, please use the expInst
         interface """
         if filepath == None and expInst != None:
+            #print 'now load the file from instance'
             self.exp = expInst
             self.data_directory = expInst.expt_path
+            #print "self.data_directory", self.data_directory
             self.prefix = expInst.prefix
+            #print "self.prefix", expInst.prefix
             self.set_data_file_path(newFile)
         else:
             self.path = filepath
@@ -38,10 +41,14 @@ class dataCacheProxy():
         # self.currentStack.post = self.post
 
     def set_data_file_path(self, newFile=False):
+        print 'create new file: ', newFile
         try:
             if newFile == True:
+                #print 'creating new file'
                 self.filename = get_next_filename(self.data_directory, self.prefix, suffix='.h5')
+                #print "the new file that's created", self.filename
             else:
+                #print 'load the current file'
                 self.filename = get_current_filename(self.data_directory, self.prefix, suffix='.h5')
         except AttributeError:
             self.filename = self.exp.filename
@@ -139,6 +146,9 @@ class dataCacheProxy():
                 self.index();
                 print "the last stack is ", self.current_stack
                 break;
+            except IOError:
+                print 'file does not exist'
+                break;
             except:
                 print '.',
 
@@ -188,6 +198,14 @@ class dataCacheProxy():
                 self.save_dict(keyString + '.' + key, value)
             else:
                 self.set(keyString + '.' + key, value)
+    def get_dict(self, keyString):
+        try:
+            return self.get(keyString)
+        except AttributeError:
+            d = {};
+            for key in self.index(keyString):
+                d[key] = self.get_dict(keyString + '.' + key)
+            return d;
 
 if __name__ == "__main__":
     print "running a test..."
@@ -233,6 +251,9 @@ if __name__ == "__main__":
     cache.save_dict('dictionary', d)
     print cache.index('dictionary')
     print cache.index('')
+    d_copy = cache.get_dict('dictionary')
+    print d, d_copy
+    assert d == d_copy, 'save_dict and get_dict round-trip failed'
 
 
     cache.find_last_stack()
