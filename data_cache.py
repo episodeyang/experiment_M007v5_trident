@@ -20,6 +20,8 @@ import util as util
 
 class dataCacheProxy():
     def __init__(self, expInst=None, newFile=False, stack_prefix='stack_', filepath=None):
+        """ filepath is for reading out files ONLY. To create new data files, please use the expInst
+        interface """
         if filepath == None and expInst != None:
             self.exp = expInst
             self.data_directory = expInst.expt_path
@@ -75,19 +77,6 @@ class dataCacheProxy():
         with SlabFile(self.path, 'a') as f:
             append_data(f, f, keyList, data)
 
-    def post(self, route, data):
-        """
-        append a datapoint to the current data stack.
-        """
-
-        try:
-            if self.current_stack != '':
-                if self.current_stack[-1] == '.': self.current_stack = self.current_stack[:-1]
-                route = self.current_stack + "." + route
-        except AttributeError:
-            pass
-        self.append(route, data)
-
     def set(self, route, data):
         """
         add a datapoint to the current data stack.
@@ -99,6 +88,18 @@ class dataCacheProxy():
         except AttributeError:
             pass
         self.add(route, data)
+
+    def post(self, route, data):
+        """
+        append a datapoint to the current data stack.
+        """
+        try:
+            if self.current_stack != '':
+                if self.current_stack[-1] == '.': self.current_stack = self.current_stack[:-1]
+                route = self.current_stack + "." + route
+        except AttributeError:
+            pass
+        self.append(route, data)
 
     def find(self, keyString):
         def get_data(f, keyList):
@@ -123,11 +124,23 @@ class dataCacheProxy():
             pass
         return self.find(route)
 
-    def next_stack(self):
+    def get_next_stack_index(self):
         try: index = int(self.current_stack[-5:]) + 1
         except: index = 0
         self.current_stack = self.stack_prefix + str(100000 + index)[1:]
         return index
+
+    def find_last_stack(self):
+        try: index = int(self.current_stack[-5:]) + 1
+        except: index = 0
+        while True:
+            self.current_stack = self.stack_prefix + str(100000 + index)[1:]
+            try:
+                self.index();
+                print "the last stack is ", self.current_stack
+                break;
+            except:
+                print '.',
 
     def index(self, keyString=''):
         def get_indices(f, keyList):
@@ -149,7 +162,7 @@ class dataCacheProxy():
             return get_indices(f, keyList)
 
     def new_stack(self):
-        index = self.next_stack()
+        index = self.get_next_stack_index()
         with SlabFile(self.path) as f:
             try:
                 f.create_group(self.current_stack)
@@ -165,8 +178,11 @@ class dataCacheProxy():
             print string
         for line in textwrap2.wrap(string, maxLength):
             self.post(keyString, line + ' ' * (maxLength - len(line)))
+
     def save_dict(self, keyString, d):
-        if not isinstance(d, dict): return
+        if not isinstance(d, dict):
+            print 'object is not a dictionary object'
+            return
         for key, value in d.iteritems():
             if isinstance(value, dict):
                 self.save_dict(keyString + '.' + key, value)
@@ -215,7 +231,12 @@ if __name__ == "__main__":
             }
         }
     cache.save_dict('dictionary', d)
+    print cache.index('dictionary')
+    print cache.index('')
 
+
+    cache.find_last_stack()
+    print 'the latest stack is: ', cache.current_stack
 
     #now data is saved in the dataCache
     #now I want to move some data to a better file
