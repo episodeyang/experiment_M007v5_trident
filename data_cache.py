@@ -187,7 +187,7 @@ class dataCacheProxy():
             if isinstance(value, dict):
                 self.save_dict(keyString + '.' + key, value)
             else:
-                self.post(keyString + '.' + key, value)
+                self.set(keyString + '.' + key, value)
 
 if __name__ == "__main__":
     print "running a test..."
