@@ -132,24 +132,31 @@ class dataCacheProxy():
         return self.find(route)
 
     def get_next_stack_index(self):
+        """ this also mutates the current_stack pointer, to point to the enxt stack
+        """
         try: index = int(self.current_stack[-5:]) + 1
         except: index = 0
         self.current_stack = self.stack_prefix + str(100000 + index)[1:]
         return index
 
     def find_last_stack(self):
-        try: index = int(self.current_stack[-5:]) + 1
-        except: index = 0
+        try:
+            index = int(self.current_stack[-5:])
+        except AttributeError:
+            index = 0
+        except ValueError:
+            index = 0
         while True:
             self.current_stack = self.stack_prefix + str(100000 + index)[1:]
             try:
-                self.index();
+                self.index()
                 print "the last stack is ", self.current_stack
-                break;
+                break
             except IOError:
-                print 'file does not exist'
-                break;
+                print 'file does not exist, current_stack is ', self.current_stack;
+                break
             except:
+                index += 1
                 print '.',
 
     def index(self, keyString=''):
@@ -171,6 +178,12 @@ class dataCacheProxy():
         with SlabFile(self.path, 'r') as f:
             return get_indices(f, keyList)
 
+    def index_current_stack(self, keyString=''):
+        if self.current_stack == '':
+            return self.index(keyString)
+        else:
+            return self.index(self.current_stack + '.' + keyString)
+
     def new_stack(self):
         index = self.get_next_stack_index()
         with SlabFile(self.path) as f:
@@ -189,23 +202,24 @@ class dataCacheProxy():
         for line in textwrap2.wrap(string, maxLength):
             self.post(keyString, line + ' ' * (maxLength - len(line)))
 
-    def save_dict(self, keyString, d):
+    def set_dict(self, keyString, d):
         if not isinstance(d, dict):
             print 'object is not a dictionary object'
             return
         for key, value in d.iteritems():
             if isinstance(value, dict):
-                self.save_dict(keyString + '.' + key, value)
+                self.set_dict(keyString + '.' + key, value)
             else:
                 self.set(keyString + '.' + key, value)
+
     def get_dict(self, keyString):
         try:
             return self.get(keyString)
         except AttributeError:
-            d = {};
-            for key in self.index(keyString):
+            d = {}
+            for key in self.index_current_stack(keyString):
                 d[key] = self.get_dict(keyString + '.' + key)
-            return d;
+            return d
 
 if __name__ == "__main__":
     print "running a test..."
@@ -239,7 +253,7 @@ if __name__ == "__main__":
     #plt.plot(cache.get('group1.subgroup.key3')[0][1])
     #plt.show()
 
-    # now test the save_dict method
+    ### now test the set_dict method
     d = {
             'key0': 'haha',
             'key1': 'haha',
@@ -248,13 +262,22 @@ if __name__ == "__main__":
                 'key3': 'some more stuff is here'
             }
         }
-    cache.save_dict('dictionary', d)
-    print cache.index('dictionary')
-    print cache.index('')
+    ## new file then find the last stack
+    cache = dataCacheProxy(exp, newFile=True)
+    cache.find_last_stack()
+    cache.set_dict('dictionary', d)
+    print cache.index_current_stack('dictionary')
     d_copy = cache.get_dict('dictionary')
     print d, d_copy
-    assert d == d_copy, 'save_dict and get_dict round-trip failed'
+    assert d == d_copy, 'set_dict and get_dict round-trip failed'
 
+    ## create new file and just add to the root
+    cache = dataCacheProxy(exp, newFile=True)
+    cache.set_dict('dictionary', d)
+    print cache.index_current_stack('dictionary')
+    d_copy = cache.get_dict('dictionary')
+    print d, d_copy
+    assert d == d_copy, 'set_dict and get_dict round-trip failed'
 
     cache.find_last_stack()
     print 'the latest stack is: ', cache.current_stack
